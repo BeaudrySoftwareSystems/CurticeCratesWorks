@@ -44,6 +44,4 @@ next-env.d.ts
 # drizzle (generated migrations are committed; only ignore caches)
 drizzle/.cache/
 
-# bun
-bun.lockb
-!bun.lockb
+# bun (lock files ARE committed; this section intentionally lists nothing)
