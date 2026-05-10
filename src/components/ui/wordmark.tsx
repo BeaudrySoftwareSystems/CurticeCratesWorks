@@ -1,23 +1,39 @@
+import Image from "next/image";
+
 /**
- * The Curtis Crates wordmark — the system's only identity signal.
+ * The Curtice Crates wordmark — the system's only identity signal.
  *
- * Geist Sans 600 with the company initials joined to a thin Crate Ember
- * underline. No logo, no glyph, no mascot — per PRODUCT.md's anti-
- * references. Used in the sticky page header on every authenticated
- * surface and on the sign-in screen.
+ * Renders the brand logo (`public/brand/curtice_crates.png`). The PNG
+ * has a white background; `mix-blend-mode: multiply` drops the white
+ * so the warm Kraft / Bone surface shows through cleanly.
+ *
+ * Sizes:
+ *   sm — 32px tall · sticky header at very narrow viewports
+ *   md — 40px tall · default header
+ *   lg — 96px tall · sign-in / not-found / error pages
  */
 export function Wordmark({
   size = "md",
+  priority = false,
 }: {
   size?: "sm" | "md" | "lg";
+  priority?: boolean;
 }): React.ReactElement {
-  const scale =
-    size === "sm" ? "text-[15px]" : size === "lg" ? "text-2xl" : "text-[17px]";
+  const px = size === "sm" ? 32 : size === "lg" ? 96 : 40;
   return (
-    <span className="inline-flex items-baseline gap-1.5 font-sans font-semibold text-soot">
-      <span className={scale}>Curtis Crates</span>
-      <span aria-hidden className="h-[3px] w-3 rounded-full bg-ember" />
-    </span>
+    <Image
+      src="/brand/curtice_crates.png"
+      alt="Curtice Crates"
+      width={px}
+      height={px}
+      priority={priority || size === "lg"}
+      // The source PNG is a square logotype on a white background. The
+      // multiply blend lets the surface tone show through the white,
+      // keeps the orange wordmark + ornament intact, and respects the
+      // page's color palette without us needing a transparent variant.
+      className="h-auto select-none object-contain mix-blend-multiply"
+      unoptimized
+    />
   );
 }
 
