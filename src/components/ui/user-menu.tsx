@@ -1,22 +1,34 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { signOutAction } from "@/app/actions/auth";
 
 /**
- * Page-header user menu. Shows the operator's email as a tappable chip
- * that opens a small popover with the sign-out form. The form posts
- * directly to the Server Action so the menu stays useful even with JS
- * disabled (the popover just stays closed).
+ * Page-header user menu. Doubles as the secondary-navigation surface —
+ * primary actions live in the header CTA (Crate Ember); everything else
+ * (low-frequency nav + sign-out) lives here so the header stays a
+ * single primary action plus an identity chip.
  *
- * Closes on outside click and on Escape — same affordances the native
- * <dialog> menus elsewhere in the app use.
+ * The chip shows initials by default and expands to email at sm+. The
+ * popover groups: identity, navigation links, then sign-out.
  */
+
+export interface NavLink {
+  label: string;
+  href: string;
+}
+
+export interface UserMenuProps {
+  email: string;
+  /** Secondary navigation entries; rendered above sign-out. */
+  links?: readonly NavLink[];
+}
+
 export function UserMenu({
   email,
-}: {
-  email: string;
-}): React.ReactElement {
+  links = [],
+}: UserMenuProps): React.ReactElement {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -57,15 +69,16 @@ export function UserMenu({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex min-h-10 items-center gap-2 rounded-md border border-hairline bg-paper px-2.5 py-1.5 font-sans text-[13px] text-soot transition-colors hover:border-edge hover:bg-kraft focus:outline-none focus-visible:ring-2 focus-visible:ring-ember/40"
+        aria-label="Account menu"
+        className="inline-flex h-10 min-w-10 items-center justify-center gap-2 rounded-full border border-hairline bg-paper px-1 font-sans text-[13px] text-soot transition-colors hover:border-edge hover:bg-kraft focus:outline-none focus-visible:ring-2 focus-visible:ring-ember/40"
       >
         <span
           aria-hidden
-          className="flex h-6 w-6 items-center justify-center rounded-full bg-ember font-mono text-[10px] font-semibold text-bone"
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-ember font-mono text-[10px] font-semibold text-bone"
         >
           {initials}
         </span>
-        <span className="hidden sm:inline">{email}</span>
+        <span className="hidden pr-2 sm:inline">{shortEmail(email)}</span>
       </button>
       {open ? (
         <div
@@ -76,8 +89,27 @@ export function UserMenu({
             <span className="font-sans text-[10px] uppercase tracking-[0.08em] text-driftwood">
               Signed in as
             </span>
-            <span className="font-sans text-[13px] text-soot">{email}</span>
+            <span className="break-words font-sans text-[13px] text-soot">
+              {email}
+            </span>
           </div>
+          {links.length > 0 ? (
+            <div className="grid border-b border-hairline">
+              {links.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href as Parameters<typeof Link>[0]["href"]}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center justify-between px-3 py-3 font-sans text-[14px] text-soot transition-colors hover:bg-paper focus:outline-none focus-visible:bg-paper"
+                >
+                  <span>{link.label}</span>
+                  <span aria-hidden className="text-driftwood">
+                    →
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : null}
           <form action={signOutAction}>
             <button
               type="submit"
@@ -93,4 +125,14 @@ export function UserMenu({
       ) : null}
     </div>
   );
+}
+
+/**
+ * Truncate the email at the `@` for the chip — full address still appears
+ * inside the popover. Keeps the header chip a fixed visual weight even
+ * when the email gets long.
+ */
+function shortEmail(email: string): string {
+  const local = email.split("@")[0] ?? email;
+  return local.length > 14 ? `${local.slice(0, 14)}…` : local;
 }

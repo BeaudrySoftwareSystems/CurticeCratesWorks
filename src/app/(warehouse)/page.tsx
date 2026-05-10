@@ -7,7 +7,7 @@ import { PhotoRepository } from "@/repositories/photo.repository";
 import { CatalogList } from "@/components/catalog/CatalogList";
 import { FilterBar } from "@/components/catalog/FilterBar";
 import { LinkButton } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader, STANDARD_NAV_LINKS } from "@/components/ui/page-header";
 import { Display, Label, Tabular } from "@/components/ui/typography";
 import type { ItemStatus } from "@/domain/item";
 import type { Photo } from "@/domain/photo";
@@ -75,15 +75,11 @@ export default async function CatalogHomePage({
     <>
       <PageHeader
         email={session.user.email ?? undefined}
-        right={
-          <>
-            <LinkButton href="/quick-sale" className="hidden sm:inline-flex">
-              Record uninbound sale
-            </LinkButton>
-            <LinkButton href="/intake" variant="primary">
-              New intake
-            </LinkButton>
-          </>
+        navLinks={STANDARD_NAV_LINKS}
+        cta={
+          <LinkButton href="/intake" variant="primary">
+            New intake
+          </LinkButton>
         }
       />
       <main className="mx-auto grid max-w-5xl gap-6 px-4 py-8">
@@ -107,17 +103,7 @@ export default async function CatalogHomePage({
           items={itemsWithCategory}
           coverByItemId={coverByItemId}
           blobBaseUrl={process.env["BLOB_STORE_BASE_URL"]}
-          emptyState={
-            <div className="grid gap-3 py-2">
-              <p className="font-sans text-[14px] text-soot">
-                Nothing {statusParam === "all" ? "" : statusLabel(statusParam).toLowerCase()} here yet.
-              </p>
-              <p className="font-sans text-[13px] text-driftwood">
-                Start an intake to add the first item, or record a sale of
-                an item that never went through the system.
-              </p>
-            </div>
-          }
+          emptyState={<CatalogEmptyState filter={statusParam} />}
         />
       </main>
     </>
@@ -135,4 +121,54 @@ function statusLabel(s: string): string {
     default:
       return "All statuses";
   }
+}
+
+function CatalogEmptyState({
+  filter,
+}: {
+  filter: string;
+}): React.ReactElement {
+  // Surface the most relevant CTA for the active filter so the user
+  // doesn't have to hunt — the header CTA only handles "New intake".
+  if (filter === "sold") {
+    return (
+      <div className="grid gap-3 py-2 text-left">
+        <p className="font-sans text-[15px] text-soot">No sold items yet.</p>
+        <p className="font-sans text-[13px] text-driftwood">
+          Record a sale that didn&apos;t go through intake, or wait for
+          stocked items to ship.
+        </p>
+        <div className="pt-2">
+          <LinkButton href="/quick-sale" variant="primary">
+            Record uninbound sale
+          </LinkButton>
+        </div>
+      </div>
+    );
+  }
+  if (filter === "archived") {
+    return (
+      <div className="py-2 text-left">
+        <p className="font-sans text-[15px] text-soot">
+          Nothing archived. Items move here when you remove them from the
+          active catalog.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="grid gap-3 py-2 text-left">
+      <p className="font-sans text-[15px] text-soot">
+        Nothing in stock yet.
+      </p>
+      <p className="font-sans text-[13px] text-driftwood">
+        Start an intake to add the first item.
+      </p>
+      <div className="pt-2">
+        <LinkButton href="/intake" variant="primary">
+          New intake
+        </LinkButton>
+      </div>
+    </div>
+  );
 }

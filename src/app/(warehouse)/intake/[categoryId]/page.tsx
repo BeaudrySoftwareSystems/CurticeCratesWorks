@@ -5,7 +5,7 @@ import { IntakeForm } from "@/components/intake/IntakeForm";
 import { startDraftIntake } from "@/app/actions/intake";
 import { AttributeDefinitionRepository } from "@/repositories/attribute_definition.repository";
 import { CategoryRepository } from "@/repositories/category.repository";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader, STANDARD_NAV_LINKS } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,10 @@ export default async function IntakeCategoryPage({
 
   return (
     <>
-      <PageHeader email={session.user.email ?? undefined} />
+      <PageHeader
+        email={session.user.email ?? undefined}
+        navLinks={STANDARD_NAV_LINKS}
+      />
       <main className="mx-auto max-w-3xl px-4 py-8">
         <IntakeForm
           itemId={itemId}

@@ -6,7 +6,7 @@ import { ItemRepository } from "@/repositories/item.repository";
 import { PhotoRepository } from "@/repositories/photo.repository";
 import { SaleRepository } from "@/repositories/sale.repository";
 import { ItemDetail } from "@/components/item/ItemDetail";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader, STANDARD_NAV_LINKS } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +35,10 @@ export default async function ItemDetailPage({
 
   return (
     <>
-      <PageHeader email={session.user.email ?? undefined} />
+      <PageHeader
+        email={session.user.email ?? undefined}
+        navLinks={STANDARD_NAV_LINKS}
+      />
       <main className="mx-auto max-w-3xl px-4 py-8">
         <ItemDetail
           item={item}

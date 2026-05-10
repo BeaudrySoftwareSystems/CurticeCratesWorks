@@ -3,7 +3,7 @@ import { getDb } from "@/db/client";
 import { auth } from "@/lib/auth";
 import { CategoryRepository } from "@/repositories/category.repository";
 import { QuickSaleForm } from "@/components/sale/QuickSaleForm";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader, STANDARD_NAV_LINKS } from "@/components/ui/page-header";
 import { Display, Label } from "@/components/ui/typography";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,10 @@ export default async function QuickSalePage(): Promise<React.ReactElement> {
 
   return (
     <>
-      <PageHeader email={session.user.email ?? undefined} />
+      <PageHeader
+        email={session.user.email ?? undefined}
+        navLinks={STANDARD_NAV_LINKS}
+      />
       <main className="mx-auto grid max-w-3xl gap-7 px-4 py-8">
         <header className="grid gap-3">
           <Label>Cold-start path</Label>

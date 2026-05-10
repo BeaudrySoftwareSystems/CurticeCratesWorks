@@ -1,20 +1,28 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { UserMenu } from "./user-menu";
+import { UserMenu, type NavLink } from "./user-menu";
 import { Wordmark } from "./wordmark";
 
 /**
- * Sticky top header used on every authenticated page. Wordmark on the
- * left, optional contextual children, then the UserMenu (sign-out) on
- * the right whenever a session email is provided. Sits on the Kraft
- * surface with a 1px Hairline border-bottom — flat at rest.
+ * Sticky top header used on every authenticated page. Layout follows
+ * the 80/20 rule:
+ *   - Wordmark (identity, low visual weight) on the left
+ *   - One optional primary CTA in the center-right (Crate Ember;
+ *     surfaces the page's most-frequent action — e.g. "New intake"
+ *     on the catalog)
+ *   - UserMenu chip on the right with secondary nav + sign-out
+ *
+ * Pages that have no obvious primary action (item detail, intake form,
+ * quick-sale) omit the CTA — the chip is enough.
  */
 export function PageHeader({
-  right,
+  cta,
   email,
+  navLinks,
 }: {
-  right?: ReactNode;
+  cta?: ReactNode;
   email?: string;
+  navLinks?: readonly NavLink[];
 }): React.ReactElement {
   return (
     <header className="sticky top-0 z-20 border-b border-hairline bg-kraft/95 backdrop-blur-sm">
@@ -26,10 +34,20 @@ export function PageHeader({
           <Wordmark />
         </Link>
         <div className="flex items-center gap-2">
-          {right}
-          {email !== undefined ? <UserMenu email={email} /> : null}
+          {cta}
+          {email !== undefined ? (
+            <UserMenu email={email} {...(navLinks !== undefined ? { links: navLinks } : {})} />
+          ) : null}
         </div>
       </div>
     </header>
   );
 }
+
+/**
+ * The standard secondary-navigation set surfaced through every header's
+ * UserMenu. Centralized so all pages stay consistent.
+ */
+export const STANDARD_NAV_LINKS: readonly NavLink[] = [
+  { label: "Record uninbound sale", href: "/quick-sale" },
+];

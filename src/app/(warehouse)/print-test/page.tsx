@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { PrintTestRunner } from "@/components/print-test/PrintTestRunner";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader, STANDARD_NAV_LINKS } from "@/components/ui/page-header";
 import { Display, Label } from "@/components/ui/typography";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,10 @@ export default async function PrintTestPage(): Promise<React.ReactElement> {
   }
   return (
     <>
-      <PageHeader email={session.user.email ?? undefined} />
+      <PageHeader
+        email={session.user.email ?? undefined}
+        navLinks={STANDARD_NAV_LINKS}
+      />
       <main className="mx-auto grid max-w-2xl gap-6 px-4 py-8">
         <header className="grid gap-3">
           <Label>Planning prerequisite · Unit 0.1</Label>
