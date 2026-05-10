@@ -145,7 +145,13 @@ export class BlobGateway {
     if (this.storeBaseUrl === "") {
       return null;
     }
-    const base = this.storeBaseUrl.replace(/\/+$/, "");
+    // Tolerate `BLOB_STORE_BASE_URL="https://..."` with literal quotes
+    // around the value — some shells / dashboard inputs don't strip them
+    // and a stray quote at the host boundary 404s every photo.
+    const base = this.storeBaseUrl
+      .trim()
+      .replace(/^["']|["']$/g, "")
+      .replace(/\/+$/, "");
     const path = pathname.replace(/^\/+/, "");
     return `${base}/${path}`;
   }

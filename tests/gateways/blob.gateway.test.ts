@@ -262,6 +262,20 @@ describe("BlobGateway.getPhotoUrl / getPhotoUrls", () => {
     );
   });
 
+  it("tolerates surrounding double or single quotes in the env value", () => {
+    const client = {} as unknown as BlobClient;
+    for (const quoted of [
+      '"https://example.public.blob.vercel-storage.com"',
+      "'https://example.public.blob.vercel-storage.com'",
+      '  "https://example.public.blob.vercel-storage.com"  ',
+    ]) {
+      const gw = new BlobGateway(client, undefined, quoted);
+      expect(gw.getPhotoUrl("foo.png")).toBe(
+        "https://example.public.blob.vercel-storage.com/foo.png",
+      );
+    }
+  });
+
   it("returns null when BLOB_STORE_BASE_URL is not configured (graceful degradation, not crash)", () => {
     const client = {} as unknown as BlobClient;
     const gw = new BlobGateway(client, undefined, "");
