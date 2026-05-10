@@ -338,6 +338,42 @@ describe("ItemService (unit, fake repos)", () => {
     expect(result.item.intakeSkipped).toBe(true);
     expect(result.sale.itemId).toBe(result.item.id);
   });
+
+  it("quickRecordSale: persists categoryId=NULL when omitted or blank", async () => {
+    const fakes = makeFakes();
+    const svc = new ItemService(
+      fakeDb(),
+      fakes.items,
+      fakes.sales,
+      silentLogger,
+    );
+    const noCat = await svc.quickRecordSale({
+      soldPrice: "5.00",
+    });
+    expect(noCat.item.categoryId).toBeNull();
+    const blankCat = await svc.quickRecordSale({
+      categoryId: "",
+      soldPrice: "5.00",
+    });
+    expect(blankCat.item.categoryId).toBeNull();
+  });
+
+  it("quickRecordSale: stashes title under attributes.title when supplied", async () => {
+    const fakes = makeFakes();
+    const svc = new ItemService(
+      fakeDb(),
+      fakes.items,
+      fakes.sales,
+      silentLogger,
+    );
+    const titled = await svc.quickRecordSale({
+      soldPrice: "12.00",
+      title: "thrifted vintage tee",
+    });
+    expect(titled.item.attributes).toEqual({ title: "thrifted vintage tee" });
+    const untitled = await svc.quickRecordSale({ soldPrice: "12.00" });
+    expect(untitled.item.attributes).toEqual({});
+  });
 });
 
 // --- Integration: real PGlite, real repos, tx rollback ----------------------

@@ -25,12 +25,19 @@ import {
 import { CategoryRepository } from "@/repositories/category.repository";
 import { ItemRepository } from "@/repositories/item.repository";
 import { SaleRepository } from "@/repositories/sale.repository";
-import { markSoldAction, type MarkSoldFormState } from "@/app/actions/sale";
+import {
+  markSoldAction,
+  quickRecordSaleAction,
+  type MarkSoldFormState,
+  type QuickRecordSaleFormState,
+} from "@/app/actions/sale";
 
 const idle: MarkSoldFormState = { status: "idle" };
+const idleQuick: QuickRecordSaleFormState = { status: "idle" };
 
 let testDb: TestDb;
 let stockedId: string;
+let categoryId: string;
 
 beforeEach(async () => {
   testDb = await createTestDb();
@@ -42,6 +49,7 @@ beforeEach(async () => {
   const cat = await new CategoryRepository(testDb).create({
     name: "Clothing",
   });
+  categoryId = cat.id;
   const item = await new ItemRepository(testDb).create({
     categoryId: cat.id,
     attributes: {},
@@ -156,5 +164,82 @@ describe("markSoldAction", () => {
       }),
     );
     expect(result.fieldErrors?.["soldAt"]).toMatch(/valid date/i);
+  });
+});
+
+describe("quickRecordSaleAction", () => {
+  it("returns sign-in error when there is no session", async () => {
+    mocks.authMock.mockResolvedValueOnce(null);
+    const result = await quickRecordSaleAction(
+      idleQuick,
+      fd({ soldPrice: "5.00" }),
+    );
+    expect(result.message).toMatch(/sign in/i);
+  });
+
+  it("returns a fieldError when soldPrice is missing", async () => {
+    const result = await quickRecordSaleAction(idleQuick, fd({}));
+    expect(result.fieldErrors?.["soldPrice"]).toMatch(/required/i);
+  });
+
+  it("happy path: creates an intake-skipped sold item with a sale row, no category", async () => {
+    let thrown: string | null = null;
+    try {
+      await quickRecordSaleAction(
+        idleQuick,
+        fd({
+          soldPrice: "12.50",
+          platform: "Depop",
+          title: "vintage tee",
+        }),
+      );
+    } catch (err) {
+      thrown = (err as Error).message;
+    }
+    expect(thrown).toMatch(/^__redirect__:\/items\//);
+    expect(mocks.revalidatePathMock).toHaveBeenCalledWith("/(warehouse)");
+
+    const items = await new ItemRepository(testDb).list({ status: "sold" });
+    const quick = items.find(
+      (i) => i.intakeSkipped && i.id !== stockedId,
+    );
+    expect(quick).toBeDefined();
+    expect(quick?.categoryId).toBeNull();
+    expect(quick?.attributes).toEqual({ title: "vintage tee" });
+  });
+
+  it("happy path: associates the sale with a category when supplied", async () => {
+    try {
+      await quickRecordSaleAction(
+        idleQuick,
+        fd({
+          soldPrice: "20.00",
+          categoryId,
+          title: "tag along",
+        }),
+      );
+    } catch {
+      /* redirect */
+    }
+    const items = await new ItemRepository(testDb).list({ status: "sold" });
+    const quick = items.find(
+      (i) => i.intakeSkipped && i.id !== stockedId,
+    );
+    expect(quick?.categoryId).toBe(categoryId);
+  });
+
+  it("persists platform=NULL when the dropdown is left unselected", async () => {
+    try {
+      await quickRecordSaleAction(idleQuick, fd({ soldPrice: "5.00" }));
+    } catch {
+      /* redirect */
+    }
+    const items = await new ItemRepository(testDb).list({ status: "sold" });
+    const quick = items.find((i) => i.intakeSkipped);
+    expect(quick).toBeDefined();
+    if (quick !== undefined) {
+      const sale = await new SaleRepository(testDb).findByItemId(quick.id);
+      expect(sale?.platform).toBeNull();
+    }
   });
 });

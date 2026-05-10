@@ -60,6 +60,14 @@ export function CatalogList({
                 >
                   {item.status}
                 </span>
+                {item.intakeSkipped ? (
+                  <span
+                    className="absolute left-2 top-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-800"
+                    title="Created via quick-record-sale; never went through intake"
+                  >
+                    Intake skipped
+                  </span>
+                ) : null}
               </div>
               <div className="grid gap-0.5 p-3">
                 <p className="text-xs uppercase tracking-wide text-slate-500">
@@ -97,6 +105,11 @@ function statusBadge(status: string): string {
 }
 
 function firstAttribute(attrs: Record<string, unknown>): string {
+  // Quick-sale items stash a free-form title under attributes.title — render
+  // it plain (no "title: " prefix) so the card reads naturally.
+  if (typeof attrs["title"] === "string" && attrs["title"] !== "") {
+    return attrs["title"];
+  }
   const entries = Object.entries(attrs);
   if (entries.length === 0) return "—";
   const [k, v] = entries[0]!;

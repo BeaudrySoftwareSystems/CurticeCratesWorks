@@ -81,12 +81,20 @@ export default async function CatalogHomePage({
             Signed in as {session.user.email}.
           </p>
         </div>
-        <Link
-          href={{ pathname: "/intake" }}
-          className="flex min-h-12 items-center rounded-md bg-blue-600 px-4 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700"
-        >
-          New intake
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={{ pathname: "/quick-sale" }}
+            className="flex min-h-12 items-center rounded-md border border-slate-300 bg-white px-4 text-base font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            Record uninbound sale
+          </Link>
+          <Link
+            href={{ pathname: "/intake" }}
+            className="flex min-h-12 items-center rounded-md bg-blue-600 px-4 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700"
+          >
+            New intake
+          </Link>
+        </div>
       </header>
       <FilterBar
         categories={categories}

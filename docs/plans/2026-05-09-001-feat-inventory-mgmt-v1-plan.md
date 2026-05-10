@@ -727,7 +727,7 @@ flowchart TD
 - End-to-end on preview deploy: intake an item, mark it sold, archive a different item.
 - Catalog list reflects state changes immediately after mutation.
 
-- [ ] **Unit 9: Quick-record-sale path for uninbound items**
+- [x] **Unit 9: Quick-record-sale path for uninbound items** *(shipped 2026-05-10; ItemService.quickRecordSale was widened to accept optional categoryId + free-form title — both passed straight through to the items row, with title stashed under attributes.title for catalog rendering)*
 
 **Goal:** Record a sale of an item that has no record in the system (cold-start scenario). Creates a minimal item record with `intake_skipped = true, status = sold` and a corresponding sales row.
 

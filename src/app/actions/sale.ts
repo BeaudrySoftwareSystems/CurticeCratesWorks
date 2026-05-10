@@ -170,3 +170,129 @@ export async function markSoldAction(
   }
   return { status: "idle" };
 }
+
+export interface QuickRecordSaleFormState {
+  status: "idle" | "error";
+  message?: string;
+  fieldErrors?: Record<string, string>;
+}
+
+/**
+ * Quick-record-sale path (R11): record a sale of an item that has no
+ * record in the system. Bypasses the dynamic per-category schema —
+ * `intake_skipped = true` on the items row is the data-level guard that
+ * marks these as deliberately stub records, distinct from full-lifecycle
+ * sold items. The catalog renders a badge from that flag.
+ *
+ * Optional `title` is stashed under `attributes.title` so the catalog
+ * card has something to display besides the display_id. Optional
+ * `categoryId` ties the row to a category for later analysis but is not
+ * required (some quick records have no idea what category fits).
+ */
+export async function quickRecordSaleAction(
+  _prev: QuickRecordSaleFormState,
+  formData: FormData,
+): Promise<QuickRecordSaleFormState> {
+  let redirectTarget: string | null = null;
+  try {
+    await requireSession();
+    const soldPriceRaw = formData.get("soldPrice");
+    const platformRaw = formData.get("platform");
+    const buyerReferenceRaw = formData.get("buyerReference");
+    const soldAtRaw = formData.get("soldAt");
+    const titleRaw = formData.get("title");
+    const categoryIdRaw = formData.get("categoryId");
+
+    if (typeof soldPriceRaw !== "string" || soldPriceRaw === "") {
+      return {
+        status: "error",
+        fieldErrors: { soldPrice: "Sold price is required" },
+      };
+    }
+    if (!/^\d+(\.\d{1,2})?$/.test(soldPriceRaw)) {
+      return {
+        status: "error",
+        fieldErrors: {
+          soldPrice: "Sold price must be a number with up to 2 decimals",
+        },
+      };
+    }
+    let platform: SoldPlatform | undefined;
+    if (typeof platformRaw === "string" && platformRaw !== "") {
+      if (!(ALLOWED_PLATFORMS as readonly string[]).includes(platformRaw)) {
+        return {
+          status: "error",
+          fieldErrors: {
+            platform: `Platform must be one of: ${ALLOWED_PLATFORMS.join(", ")}`,
+          },
+        };
+      }
+      platform = platformRaw as SoldPlatform;
+    }
+    let buyerReference: string | undefined;
+    if (typeof buyerReferenceRaw === "string" && buyerReferenceRaw !== "") {
+      if (buyerReferenceRaw.length > TEXT_MAX) {
+        return {
+          status: "error",
+          fieldErrors: {
+            buyerReference: `Buyer reference must be ${TEXT_MAX} characters or fewer`,
+          },
+        };
+      }
+      buyerReference = buyerReferenceRaw;
+    }
+    let soldAt: Date | undefined;
+    if (typeof soldAtRaw === "string" && soldAtRaw !== "") {
+      const parsed = new Date(soldAtRaw);
+      if (Number.isNaN(parsed.getTime())) {
+        return {
+          status: "error",
+          fieldErrors: { soldAt: "Sold date is not a valid date" },
+        };
+      }
+      soldAt = parsed;
+    }
+    let title: string | undefined;
+    if (typeof titleRaw === "string" && titleRaw !== "") {
+      if (titleRaw.length > TEXT_MAX) {
+        return {
+          status: "error",
+          fieldErrors: {
+            title: `Title must be ${TEXT_MAX} characters or fewer`,
+          },
+        };
+      }
+      title = titleRaw;
+    }
+    let categoryId: string | undefined;
+    if (typeof categoryIdRaw === "string" && categoryIdRaw !== "") {
+      categoryId = categoryIdRaw;
+    }
+
+    const items = buildItemService();
+    const { item } = await items.quickRecordSale({
+      ...(categoryId !== undefined ? { categoryId } : {}),
+      soldPrice: soldPriceRaw,
+      ...(platform !== undefined ? { platform } : {}),
+      ...(buyerReference !== undefined ? { buyerReference } : {}),
+      ...(soldAt !== undefined ? { soldAt } : {}),
+      ...(title !== undefined ? { title } : {}),
+    });
+    revalidatePath("/(warehouse)");
+    redirectTarget = `/items/${item.id}`;
+  } catch (err) {
+    if (err instanceof ErrUnauthenticated) {
+      return { status: "error", message: "Sign in required." };
+    }
+    if (err instanceof ErrNotFound) {
+      return { status: "error", message: err.message };
+    }
+    logger.error({ err }, "unexpected error in quickRecordSaleAction");
+    return { status: "error", message: "Something went wrong." };
+  }
+  if (redirectTarget !== null) {
+    // SAFETY: dynamic item id is validated to be a non-empty string above.
+    redirect(redirectTarget as Parameters<typeof redirect>[0]);
+  }
+  return { status: "idle" };
+}

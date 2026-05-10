@@ -63,7 +63,17 @@ export interface SaleInput {
 }
 
 export interface QuickSaleInput {
-  categoryId: string;
+  /**
+   * Optional category — quick records sometimes have no idea what category
+   * fits. Pass an empty string or omit to leave the items.category_id
+   * column NULL.
+   */
+  categoryId?: string;
+  /**
+   * Optional free-form title stashed under `attributes.title` so the
+   * catalog card has something to display besides the display id.
+   */
+  title?: string;
   soldPrice: string;
   platform?: SoldPlatform;
   buyerReference?: string;
@@ -212,11 +222,17 @@ export class ItemService {
   async quickRecordSale(
     input: QuickSaleInput,
   ): Promise<{ item: Item; sale: Sale }> {
+    const categoryId =
+      input.categoryId !== undefined && input.categoryId !== ""
+        ? input.categoryId
+        : null;
+    const attributes: Record<string, unknown> =
+      input.title !== undefined ? { title: input.title } : {};
     return this.db.transaction(async (tx) => {
       const item = await this.items.create(
         {
-          categoryId: input.categoryId,
-          attributes: {},
+          ...(categoryId !== null ? { categoryId } : {}),
+          attributes,
           intakeSkipped: true,
           status: "sold",
         },
