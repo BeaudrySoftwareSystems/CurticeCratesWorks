@@ -1,7 +1,7 @@
 /**
- * One-off seed script — attach photos to existing items by sourcing them
- * from public Poshmark listing pages. Useful for populating dev / preview
- * databases with realistic data without doing manual phone uploads.
+ * One-off seed script — populate existing items with both photos AND
+ * product info sourced from public Poshmark listing pages. Useful for
+ * dev / preview data without doing manual phone uploads + form entry.
  *
  * Requirements:
  *   - DATABASE_URL must point at the target database (the same one the
@@ -12,18 +12,26 @@
  *   # List current items + show usage
  *   bun run src/db/seed/photos-from-poshmark.ts
  *
- *   # Attach photos from one or more Poshmark listings to specific items
+ *   # Attach photos + product info from Poshmark listings to specific items
  *   bun run src/db/seed/photos-from-poshmark.ts \
  *     01HXXXXX...=https://poshmark.com/listing/abc123 \
  *     01HYYYYY...=https://poshmark.com/listing/def456
  *
- * Per listing the script fetches up to MAX_PHOTOS_PER_ITEM photos, EXIF-
- * strips and resizes them, uploads to Vercel Blob, and writes photos
- * rows linked to the item. Re-running with the same arguments creates
- * additional photos rows (the script does not dedupe — it appends).
+ * Per listing the script:
+ *   1. Extracts product info from the page's JSON-LD Product block
+ *      (title, brand, color, listed price, description) plus the
+ *      inline state blob (size). Maps schema.org item conditions to
+ *      our Clothing condition enum.
+ *   2. Merges those into the item's attributes (existing values are
+ *      preserved unless the script has a fresh value for the same key)
+ *      and writes listPrice via ItemRepository.update.
+ *   3. Fetches up to MAX_PHOTOS_PER_ITEM photos, EXIF-strips and
+ *      resizes them, uploads to Vercel Blob, writes photos rows.
  *
- * NOT production code. Scoped to the seed/ directory and excluded from
- * coverage.
+ * Re-running appends photo rows but the attribute merge is
+ * idempotent — running twice doesn't multiply title/brand/etc.
+ *
+ * NOT production code. Lives under seed/ and excluded from coverage.
  */
 
 import { put } from "@vercel/blob";
@@ -56,7 +64,7 @@ async function main(): Promise<void> {
 
   const pairs = argv.map(parseArg);
   for (const pair of pairs) {
-    await attachPhotos(pair, items, photos);
+    await seedFromListing(pair, items, photos);
     await sleep(FETCH_DELAY_MS);
   }
 }
@@ -100,7 +108,7 @@ function parseArg(arg: string): Pair {
   return { itemId, url };
 }
 
-async function attachPhotos(
+async function seedFromListing(
   pair: Pair,
   items: ItemRepository,
   photos: PhotoRepository,
@@ -114,14 +122,55 @@ async function attachPhotos(
   console.warn(`\n→ ${pair.itemId}  CCI-${String(item.displayId).padStart(6, "0")}`);
   console.warn(`  source: ${pair.url}`);
 
-  const photoUrls = await fetchPhotoUrls(pair.url);
-  if (photoUrls.length === 0) {
+  let listing: Listing;
+  try {
+    listing = await fetchListing(pair.url);
+  } catch (err) {
+    console.warn(
+      `  ! failed to fetch listing: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return;
+  }
+
+  // 1. Merge product info into the item.
+  const mergedAttributes: Record<string, unknown> = {
+    ...((item.attributes as Record<string, unknown>) ?? {}),
+  };
+  for (const [key, value] of Object.entries(listing.product)) {
+    if (value !== undefined && value !== null && value !== "") {
+      mergedAttributes[key] = value;
+    }
+  }
+  const updatePatch: Parameters<ItemRepository["update"]>[1] = {
+    attributes: mergedAttributes,
+  };
+  if (listing.listPrice !== null) {
+    updatePatch.listPrice = listing.listPrice;
+  }
+  await items.update(pair.itemId, updatePatch);
+
+  const productSummary = Object.entries(listing.product)
+    .filter(([, v]) => v !== undefined && v !== null && v !== "")
+    .map(([k, v]) =>
+      `${k}=${typeof v === "string" && v.length > 40 ? `${v.slice(0, 40)}…` : String(v)}`,
+    )
+    .join(", ");
+  console.warn(
+    `  ✓ product info: ${productSummary || "(none extracted)"}${
+      listing.listPrice !== null ? ` listPrice=$${listing.listPrice}` : ""
+    }`,
+  );
+
+  // 2. Attach photos.
+  if (listing.photoUrls.length === 0) {
     console.warn(`  ! no photo URLs found in the Poshmark page`);
     return;
   }
-  console.warn(`  found ${photoUrls.length} photo URL(s); attaching up to ${MAX_PHOTOS_PER_ITEM}`);
+  console.warn(
+    `  found ${listing.photoUrls.length} photo URL(s); attaching up to ${MAX_PHOTOS_PER_ITEM}`,
+  );
 
-  const toAttach = photoUrls.slice(0, MAX_PHOTOS_PER_ITEM);
+  const toAttach = listing.photoUrls.slice(0, MAX_PHOTOS_PER_ITEM);
   for (let i = 0; i < toAttach.length; i++) {
     const photoUrl = toAttach[i]!;
     try {
@@ -142,7 +191,9 @@ async function attachPhotos(
         itemId: pair.itemId,
         blobPath: written.pathname,
       });
-      console.warn(`  ✓ ${photo.id}  ${written.pathname}  (${formatBytes(processed.length)})`);
+      console.warn(
+        `  ✓ photo ${i + 1}: ${photo.id}  ${written.pathname}  (${formatBytes(processed.length)})`,
+      );
     } catch (err) {
       console.warn(
         `  ! failed photo ${i + 1}: ${err instanceof Error ? err.message : String(err)}`,
@@ -153,15 +204,36 @@ async function attachPhotos(
 }
 
 /**
- * Extract photo URLs from a Poshmark listing page. Tries three sources
- * in order:
- *   1. og:image meta tag (always present for SEO; gives the cover only)
- *   2. JSON-LD `image` array (sometimes carries multiple)
- *   3. Direct <img> tags pointing at Poshmark's CDN hosts
- *
- * Returns the deduplicated set ordered cover-first.
+ * Everything we extract from one Poshmark listing page in a single
+ * fetch. Photos come from three fallback sources; product info comes
+ * from the JSON-LD Product block (always present for SEO) plus a small
+ * scrape of the inline state blob for size (which JSON-LD omits).
  */
-async function fetchPhotoUrls(pageUrl: string): Promise<string[]> {
+interface Listing {
+  photoUrls: string[];
+  /** Listed price as a numeric string (no $), or null if not parseable. */
+  listPrice: string | null;
+  product: ProductAttributes;
+}
+
+/**
+ * Attribute keys we know about from the v1 Clothing seed plus a few
+ * generic ones (title, description) that fit any category. Anything not
+ * in this set isn't extracted — the categories admin lets you add new
+ * fields, but we don't try to auto-populate them from Poshmark since
+ * the mapping isn't safe to guess.
+ */
+interface ProductAttributes {
+  title?: string;
+  description?: string;
+  brand?: string;
+  color?: string;
+  size?: string;
+  /** Mapped from schema.org itemCondition to the Clothing condition enum. */
+  condition?: "NWT" | "NWOT" | "Excellent" | "Good" | "Fair" | "Poor";
+}
+
+async function fetchListing(pageUrl: string): Promise<Listing> {
   const res = await fetch(pageUrl, {
     headers: {
       "user-agent": USER_AGENT,
@@ -173,6 +245,13 @@ async function fetchPhotoUrls(pageUrl: string): Promise<string[]> {
   }
   const html = await res.text();
 
+  return {
+    photoUrls: extractPhotoUrls(html),
+    ...extractProduct(html),
+  };
+}
+
+function extractPhotoUrls(html: string): string[] {
   const found: string[] = [];
 
   // 1. og:image (cover)
@@ -185,30 +264,14 @@ async function fetchPhotoUrls(pageUrl: string): Promise<string[]> {
   }
 
   // 2. JSON-LD images
-  const ldMatches = html.matchAll(
-    /<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi,
-  );
-  for (const m of ldMatches) {
-    const raw = m[1];
-    if (raw === undefined) continue;
-    try {
-      const data = JSON.parse(raw) as
-        | { image?: string | string[] }
-        | { image?: string | string[] }[];
-      const stack = Array.isArray(data) ? data : [data];
-      for (const node of stack) {
-        if (typeof node !== "object" || node === null) continue;
-        const img = (node as { image?: unknown }).image;
-        if (typeof img === "string") {
-          found.push(img);
-        } else if (Array.isArray(img)) {
-          for (const u of img) {
-            if (typeof u === "string") found.push(u);
-          }
-        }
+  for (const node of jsonLdNodes(html)) {
+    const img = (node as { image?: unknown }).image;
+    if (typeof img === "string") {
+      found.push(img);
+    } else if (Array.isArray(img)) {
+      for (const u of img) {
+        if (typeof u === "string") found.push(u);
       }
-    } catch {
-      // tolerate JSON-LD blocks that aren't valid JSON
     }
   }
 
@@ -235,6 +298,117 @@ async function fetchPhotoUrls(pageUrl: string): Promise<string[]> {
     out.push(normalized);
   }
   return out;
+}
+
+function extractProduct(html: string): {
+  product: ProductAttributes;
+  listPrice: string | null;
+} {
+  const product: ProductAttributes = {};
+  let listPrice: string | null = null;
+
+  // The Product node carries name / description / color / brand /
+  // offers.price / offers.itemCondition. There may be additional
+  // BreadcrumbList nodes — we ignore those.
+  for (const node of jsonLdNodes(html)) {
+    if ((node as { "@type"?: unknown })["@type"] !== "Product") continue;
+    const p = node as Record<string, unknown>;
+    if (typeof p["name"] === "string") {
+      product.title = decodeHtmlEntities(p["name"]);
+    }
+    if (typeof p["description"] === "string") {
+      product.description = decodeHtmlEntities(p["description"]);
+    }
+    if (typeof p["color"] === "string") {
+      product.color = decodeHtmlEntities(p["color"]);
+    }
+    const brand = p["brand"];
+    if (
+      typeof brand === "object" &&
+      brand !== null &&
+      typeof (brand as { name?: unknown }).name === "string"
+    ) {
+      product.brand = decodeHtmlEntities((brand as { name: string }).name);
+    }
+    const offers = p["offers"];
+    if (typeof offers === "object" && offers !== null) {
+      const off = offers as Record<string, unknown>;
+      if (typeof off["price"] === "string" || typeof off["price"] === "number") {
+        const n = Number(off["price"]);
+        if (!Number.isNaN(n)) {
+          listPrice = n.toFixed(2);
+        }
+      }
+      if (typeof off["itemCondition"] === "string") {
+        const mapped = mapItemCondition(off["itemCondition"]);
+        if (mapped !== undefined) {
+          product.condition = mapped;
+        }
+      }
+    }
+  }
+
+  // Size lives in the inline app state — JSON-LD doesn't carry it. Match
+  // the `"size_quantities":[{...,"size_obj":{...,"display":"S",...}` shape.
+  const sizeMatch = html.match(
+    /"size_quantities":\[\{[^\]]*?"size_obj":\{[^}]*?"display":"([^"]+)"/,
+  );
+  if (sizeMatch?.[1] !== undefined) {
+    product.size = sizeMatch[1];
+  }
+
+  return { product, listPrice };
+}
+
+function* jsonLdNodes(html: string): Generator<unknown> {
+  const ldMatches = html.matchAll(
+    /<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi,
+  );
+  for (const m of ldMatches) {
+    const raw = m[1];
+    if (raw === undefined) continue;
+    try {
+      const data = JSON.parse(raw);
+      const stack = Array.isArray(data) ? data : [data];
+      for (const node of stack) {
+        if (typeof node === "object" && node !== null) {
+          yield node;
+        }
+      }
+    } catch {
+      // tolerate JSON-LD blocks that aren't valid JSON
+    }
+  }
+}
+
+/**
+ * Map schema.org itemCondition URLs to the Clothing condition enum.
+ * Defaults to undefined for anything ambiguous so we don't write a
+ * wrong value over a real one.
+ */
+function mapItemCondition(
+  schemaCondition: string,
+): ProductAttributes["condition"] | undefined {
+  if (schemaCondition.endsWith("NewCondition")) return "NWT";
+  if (schemaCondition.endsWith("RefurbishedCondition")) return "Excellent";
+  if (schemaCondition.endsWith("UsedCondition")) return "Good";
+  if (schemaCondition.endsWith("DamagedCondition")) return "Poor";
+  return undefined;
+}
+
+/**
+ * Poshmark JSON-LD descriptions occasionally contain HTML-encoded
+ * entities (e.g. `&quot;`, `&lt;`). Decoded for human readability in
+ * attribute values.
+ */
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#39;/g, "'");
 }
 
 /**
