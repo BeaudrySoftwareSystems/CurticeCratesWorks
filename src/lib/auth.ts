@@ -1,10 +1,36 @@
+import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import NextAuth from "next-auth";
 import Resend from "next-auth/providers/resend";
-import { STAFF_ALLOWLIST, isAllowlisted } from "@/lib/allowlist";
+import { getDb } from "@/db/client";
+import {
+  accounts,
+  sessions,
+  users,
+  verificationTokens,
+} from "@/db/schema";
+import { authConfig } from "@/lib/auth.config";
 
 export { STAFF_ALLOWLIST, isAllowlisted, parseAllowlist } from "@/lib/allowlist";
 
+/**
+ * Node-runtime Auth.js config. Layers the Drizzle adapter and the Resend
+ * (magic-link) provider on top of the edge-safe `authConfig`. Magic-link
+ * providers require persistent storage for the verification token even when
+ * sessions are JWT-backed — that storage is the `verification_tokens` table
+ * owned by `DrizzleAdapter`. The `sessions` table goes unused under
+ * `strategy: "jwt"` but is still required by the adapter contract.
+ *
+ * IMPORTANT: do not import this file from `middleware.ts` or any other edge
+ * surface. Edge code must import `auth.config.ts` directly.
+ */
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+  adapter: DrizzleAdapter(getDb(), {
+    usersTable: users,
+    accountsTable: accounts,
+    sessionsTable: sessions,
+    verificationTokensTable: verificationTokens,
+  }),
   providers: [
     Resend({
       apiKey: process.env["AUTH_RESEND_KEY"],
@@ -12,38 +38,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       maxAge: 15 * 60, // magic links expire in 15 minutes
     }),
   ],
-  session: {
-    strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 hours; per-request enforcement still happens in middleware
-  },
-  pages: {
-    signIn: "/sign-in",
-    verifyRequest: "/sign-in/sent",
-    error: "/sign-in",
-  },
-  callbacks: {
-    /**
-     * Defense-in-depth: deny token issuance if the email leaves the allowlist
-     * between sign-in and refresh. The primary revocation gate is middleware
-     * (see `src/middleware.ts`); this callback is the secondary check.
-     */
-    async signIn({ user }) {
-      const email = user.email;
-      if (email === null || email === undefined) {
-        return false;
-      }
-      return isAllowlisted(email, STAFF_ALLOWLIST);
-    },
-    async jwt({ token }) {
-      // Defense-in-depth: invalidate JWT contents on refresh if the email is
-      // no longer on the allowlist. Note that this only runs on token refresh
-      // (not every request) — middleware is the per-request gate.
-      const email = typeof token.email === "string" ? token.email : null;
-      if (email !== null && !isAllowlisted(email, STAFF_ALLOWLIST)) {
-        return {};
-      }
-      return token;
-    },
-  },
-  trustHost: true,
 });

@@ -8,10 +8,12 @@ import {
   numeric,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import type { AdapterAccountType } from "next-auth/adapters";
 import { ulid } from "ulid";
 
 // --- Enums ------------------------------------------------------------------
@@ -191,6 +193,77 @@ export const sales = pgTable(
   (table) => [uniqueIndex("sales_item_id_unique").on(table.itemId)],
 );
 
+// --- Auth.js (next-auth v5) tables ------------------------------------------
+
+/**
+ * Auth.js core tables required by `@auth/drizzle-adapter`.
+ *
+ * Column names (camelCase) and adapter-required fields are dictated by Auth.js
+ * — do not rename them. Table names are snake_case to match project
+ * convention. Sessions go unused under `strategy: "jwt"` but the table is
+ * required for the adapter contract; verificationTokens is the load-bearing
+ * one for the Resend magic-link provider.
+ */
+
+export const users = pgTable("users", {
+  id: text("id").primaryKey().$defaultFn(() => ulid()),
+  name: text("name"),
+  email: text("email").notNull().unique(),
+  emailVerified: timestamp("emailVerified", {
+    mode: "date",
+    withTimezone: true,
+  }),
+  image: text("image"),
+});
+
+export const accounts = pgTable(
+  "accounts",
+  {
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").$type<AdapterAccountType>().notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("providerAccountId").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (account) => [
+    primaryKey({
+      columns: [account.provider, account.providerAccountId],
+    }),
+  ],
+);
+
+export const sessions = pgTable("sessions", {
+  sessionToken: text("sessionToken").primaryKey(),
+  userId: text("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+});
+
+export const verificationTokens = pgTable(
+  "verification_tokens",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", {
+      mode: "date",
+      withTimezone: true,
+    }).notNull(),
+  },
+  (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })],
+);
+
 // --- Type exports for downstream consumers ----------------------------------
 
 export type Category = typeof categories.$inferSelect;
@@ -203,3 +276,5 @@ export type Photo = typeof photos.$inferSelect;
 export type NewPhoto = typeof photos.$inferInsert;
 export type Sale = typeof sales.$inferSelect;
 export type NewSale = typeof sales.$inferInsert;
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;

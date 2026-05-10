@@ -1,5 +1,7 @@
+import NextAuth from "next-auth";
 import { NextResponse, type NextRequest } from "next/server";
-import { auth, isAllowlisted, STAFF_ALLOWLIST } from "@/lib/auth";
+import { isAllowlisted, STAFF_ALLOWLIST } from "@/lib/allowlist";
+import { authConfig } from "@/lib/auth.config";
 
 /**
  * Per-request allowlist enforcement. The Auth.js v5 jwt callback fires only
@@ -9,7 +11,14 @@ import { auth, isAllowlisted, STAFF_ALLOWLIST } from "@/lib/auth";
  * session cookies cleared.
  *
  * Public paths (/sign-in*, /api/auth*) bypass the allowlist check.
+ *
+ * IMPORTANT: we construct a middleware-local NextAuth instance from the
+ * edge-safe `authConfig` rather than importing `auth` from `@/lib/auth`.
+ * That module pulls in the Drizzle adapter and `@neondatabase/serverless`,
+ * neither of which is bundleable for the edge runtime — doing so would
+ * surface as `MissingAdapter: Email login requires an adapter` at runtime.
  */
+const { auth } = NextAuth(authConfig);
 export default auth((req: NextRequest & { auth: unknown }): NextResponse => {
   const url = req.nextUrl;
   // SAFETY: Auth.js v5 augments NextRequest with `auth: Session | null` at
