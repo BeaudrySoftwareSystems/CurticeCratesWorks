@@ -70,9 +70,8 @@ export const config = {
      * Apply to all paths except:
      * - /api/auth/* (Auth.js handlers must run unauthenticated)
      * - /_next/static/* and /_next/image/* (build artifacts)
-     * - /brand/* (the logo + brand assets must load on the sign-in page)
      * - /favicon.ico, /robots.txt, /sitemap.xml (static assets)
      */
-    "/((?!api/auth|_next/static|_next/image|brand/|favicon.ico|robots.txt|sitemap.xml).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
   ],
 };

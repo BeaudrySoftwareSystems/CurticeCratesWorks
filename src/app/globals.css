@@ -42,6 +42,8 @@
   --font-mono:
     var(--font-geist-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo,
     Consolas, monospace;
+  --font-serif:
+    var(--font-playfair), "Playfair Display", "Cormorant Garamond", "Times New Roman", serif;
 }
 
 /* Force light mode for v1 — DESIGN.md treats dark as a future opt-in. */
