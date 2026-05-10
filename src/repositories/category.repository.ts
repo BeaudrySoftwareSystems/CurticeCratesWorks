@@ -46,4 +46,28 @@ export class CategoryRepository {
     }
     return row;
   }
+
+  async update(
+    id: string,
+    patch: Partial<Pick<NewCategory, "name" | "description" | "sortOrder">>,
+    tx?: Db,
+  ): Promise<Category | null> {
+    const handle = tx ?? this.db;
+    const [row] = await handle
+      .update(categories)
+      .set(patch)
+      .where(eq(categories.id, id))
+      .returning();
+    return row ?? null;
+  }
+
+  /**
+   * Hard delete. The schema's `items.category_id` FK is `onDelete: restrict`,
+   * so the DB rejects this with an integrity error if any items reference
+   * the category. The Service layer surfaces that as `ErrInUse`.
+   */
+  async delete(id: string, tx?: Db): Promise<void> {
+    const handle = tx ?? this.db;
+    await handle.delete(categories).where(eq(categories.id, id));
+  }
 }

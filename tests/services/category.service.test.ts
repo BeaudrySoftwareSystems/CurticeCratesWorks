@@ -6,9 +6,15 @@ import type {
   NewAttributeDefinition,
   NewCategory,
 } from "@/domain/category";
-import { ErrNotFound, ErrValidation } from "@/domain/errors";
+import {
+  ErrConflict,
+  ErrInUse,
+  ErrNotFound,
+  ErrValidation,
+} from "@/domain/errors";
 import { AttributeDefinitionRepository } from "@/repositories/attribute_definition.repository";
 import { CategoryRepository } from "@/repositories/category.repository";
+import { ItemRepository } from "@/repositories/item.repository";
 import { CategoryService } from "@/services/category.service";
 import {
   closeTestDb,
@@ -18,53 +24,137 @@ import {
 
 // --- Fakes ------------------------------------------------------------------
 
-function makeFakes(): {
-  categories: {
-    findById: (id: string) => Promise<Category | null>;
-    insert: (c: NewCategory & { id: string }) => void;
-  };
-  attrs: {
-    listForCategory: (categoryId: string) => Promise<AttributeDefinition[]>;
-    insert: (def: NewAttributeDefinition & { id: string }) => void;
-  };
-} {
+function makeFakes() {
   const cats = new Map<string, Category>();
   const defs = new Map<string, AttributeDefinition>();
+  let counter = 1;
 
-  return {
-    categories: {
-      async findById(id: string) {
-        return cats.get(id) ?? null;
-      },
-      insert(c) {
-        cats.set(c.id, {
-          id: c.id,
-          name: c.name,
-          description: c.description ?? null,
-          sortOrder: c.sortOrder ?? 0,
-          createdAt: new Date(),
-        });
-      },
+  const categoriesFake = {
+    async findById(id: string): Promise<Category | null> {
+      return cats.get(id) ?? null;
     },
-    attrs: {
-      async listForCategory(categoryId: string) {
-        return [...defs.values()]
-          .filter((d) => d.categoryId === categoryId)
-          .sort((a, b) => a.sortOrder - b.sortOrder);
-      },
-      insert(def) {
-        defs.set(def.id, {
-          id: def.id,
-          categoryId: def.categoryId,
-          key: def.key,
-          type: def.type,
-          enumOptions: def.enumOptions ?? null,
-          required: def.required ?? false,
-          sortOrder: def.sortOrder ?? 0,
-        });
-      },
+    async findByName(name: string): Promise<Category | null> {
+      for (const c of cats.values()) {
+        if (c.name === name) return c;
+      }
+      return null;
+    },
+    async list(): Promise<Category[]> {
+      return [...cats.values()].sort(
+        (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
+      );
+    },
+    async create(input: NewCategory): Promise<Category> {
+      const id = `cat-fake-${counter++}`;
+      const row: Category = {
+        id,
+        name: input.name,
+        description: input.description ?? null,
+        sortOrder: input.sortOrder ?? 0,
+        createdAt: new Date(),
+      };
+      cats.set(id, row);
+      return row;
+    },
+    async update(
+      id: string,
+      patch: Partial<Pick<NewCategory, "name" | "description" | "sortOrder">>,
+    ): Promise<Category | null> {
+      const current = cats.get(id);
+      if (current === undefined) return null;
+      const next: Category = {
+        ...current,
+        ...(patch.name !== undefined ? { name: patch.name } : {}),
+        ...(patch.description !== undefined
+          ? { description: patch.description }
+          : {}),
+        ...(patch.sortOrder !== undefined ? { sortOrder: patch.sortOrder } : {}),
+      };
+      cats.set(id, next);
+      return next;
+    },
+    async delete(id: string): Promise<void> {
+      cats.delete(id);
+    },
+    insert(c: NewCategory & { id: string }) {
+      cats.set(c.id, {
+        id: c.id,
+        name: c.name,
+        description: c.description ?? null,
+        sortOrder: c.sortOrder ?? 0,
+        createdAt: new Date(),
+      });
     },
   };
+
+  const attrsFake = {
+    async findById(id: string): Promise<AttributeDefinition | null> {
+      return defs.get(id) ?? null;
+    },
+    async listForCategory(categoryId: string): Promise<AttributeDefinition[]> {
+      return [...defs.values()]
+        .filter((d) => d.categoryId === categoryId)
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+    },
+    async create(
+      input: NewAttributeDefinition,
+    ): Promise<AttributeDefinition> {
+      const id = `def-fake-${counter++}`;
+      const row: AttributeDefinition = {
+        id,
+        categoryId: input.categoryId,
+        key: input.key,
+        type: input.type,
+        enumOptions: (input.enumOptions ?? null) as string[] | null,
+        required: input.required ?? false,
+        sortOrder: input.sortOrder ?? 0,
+      };
+      defs.set(id, row);
+      return row;
+    },
+    async update(
+      id: string,
+      patch: Partial<
+        Pick<
+          NewAttributeDefinition,
+          "key" | "type" | "enumOptions" | "required" | "sortOrder"
+        >
+      >,
+    ): Promise<AttributeDefinition | null> {
+      const current = defs.get(id);
+      if (current === undefined) return null;
+      const next: AttributeDefinition = {
+        ...current,
+        ...(patch.key !== undefined ? { key: patch.key } : {}),
+        ...(patch.type !== undefined ? { type: patch.type } : {}),
+        ...(patch.enumOptions !== undefined
+          ? { enumOptions: patch.enumOptions as string[] | null }
+          : {}),
+        ...(patch.required !== undefined ? { required: patch.required } : {}),
+        ...(patch.sortOrder !== undefined
+          ? { sortOrder: patch.sortOrder }
+          : {}),
+      };
+      defs.set(id, next);
+      return next;
+    },
+    async delete(id: string): Promise<void> {
+      defs.delete(id);
+    },
+    insert(def: NewAttributeDefinition & { id: string }) {
+      defs.set(def.id, {
+        id: def.id,
+        categoryId: def.categoryId,
+        key: def.key,
+        type: def.type,
+        enumOptions: (def.enumOptions ?? null) as string[] | null,
+        required: def.required ?? false,
+        sortOrder: def.sortOrder ?? 0,
+      });
+    },
+  };
+
+  return { categories: categoriesFake, attrs: attrsFake };
 }
 
 describe("CategoryService.validateIntake (unit, fakes)", () => {
@@ -207,5 +297,321 @@ describe("CategoryService.validateIntake (integration, PGlite)", () => {
       condition: "NM",
       graded: false,
     });
+  });
+});
+
+// --- Admin paths (unit, fakes) ---------------------------------------------
+
+describe("CategoryService — admin paths (fakes)", () => {
+  describe("createCategory", () => {
+    it("rejects an empty name", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      await expect(
+        svc.createCategory({ name: "" }),
+      ).rejects.toBeInstanceOf(ErrValidation);
+    });
+
+    it("rejects a duplicate name (case-sensitive)", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      await svc.createCategory({ name: "Funko Pops" });
+      await expect(
+        svc.createCategory({ name: "Funko Pops" }),
+      ).rejects.toBeInstanceOf(ErrConflict);
+    });
+
+    it("creates a category with description and sortOrder", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      const cat = await svc.createCategory({
+        name: "Sneakers",
+        description: "Boxed kicks, dead-stock and worn",
+        sortOrder: 5,
+      });
+      expect(cat.name).toBe("Sneakers");
+      expect(cat.description).toBe("Boxed kicks, dead-stock and worn");
+      expect(cat.sortOrder).toBe(5);
+    });
+  });
+
+  describe("updateCategory", () => {
+    it("throws ErrNotFound when the category id is unknown", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      await expect(
+        svc.updateCategory("missing", { name: "x" }),
+      ).rejects.toBeInstanceOf(ErrNotFound);
+    });
+
+    it("rejects a rename that conflicts with an existing name", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      const a = await svc.createCategory({ name: "Comics" });
+      await svc.createCategory({ name: "Plush" });
+      await expect(
+        svc.updateCategory(a.id, { name: "Plush" }),
+      ).rejects.toBeInstanceOf(ErrConflict);
+    });
+
+    it("allows updating description without renaming", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      const a = await svc.createCategory({ name: "Vinyl" });
+      const updated = await svc.updateCategory(a.id, {
+        name: "Vinyl",
+        description: "LPs and 7-inches",
+      });
+      expect(updated.description).toBe("LPs and 7-inches");
+    });
+  });
+
+  describe("addAttributeDefinition", () => {
+    it("throws ErrNotFound when the category id is unknown", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      await expect(
+        svc.addAttributeDefinition("missing", {
+          key: "brand",
+          type: "text",
+        }),
+      ).rejects.toBeInstanceOf(ErrNotFound);
+    });
+
+    it("rejects an invalid key shape", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      const cat = await svc.createCategory({ name: "Vinyl" });
+      await expect(
+        svc.addAttributeDefinition(cat.id, {
+          key: "Brand Name",
+          type: "text",
+        }),
+      ).rejects.toBeInstanceOf(ErrValidation);
+    });
+
+    it("rejects enum without options", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      const cat = await svc.createCategory({ name: "Vinyl" });
+      await expect(
+        svc.addAttributeDefinition(cat.id, { key: "format", type: "enum" }),
+      ).rejects.toBeInstanceOf(ErrValidation);
+    });
+
+    it("rejects enum option longer than the label-printer cap", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      const cat = await svc.createCategory({ name: "Vinyl" });
+      await expect(
+        svc.addAttributeDefinition(cat.id, {
+          key: "format",
+          type: "enum",
+          enumOptions: ["LP", "x".repeat(60)],
+        }),
+      ).rejects.toBeInstanceOf(ErrValidation);
+    });
+
+    it("rejects a duplicate key on the same category", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      const cat = await svc.createCategory({ name: "Vinyl" });
+      await svc.addAttributeDefinition(cat.id, {
+        key: "speed",
+        type: "text",
+      });
+      await expect(
+        svc.addAttributeDefinition(cat.id, {
+          key: "speed",
+          type: "text",
+        }),
+      ).rejects.toBeInstanceOf(ErrConflict);
+    });
+
+    it("creates a valid enum attribute", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      const cat = await svc.createCategory({ name: "Vinyl" });
+      const def = await svc.addAttributeDefinition(cat.id, {
+        key: "format",
+        type: "enum",
+        enumOptions: ["LP", "EP", "7\""],
+        required: true,
+      });
+      expect(def.type).toBe("enum");
+      expect(def.enumOptions).toEqual(["LP", "EP", "7\""]);
+      expect(def.required).toBe(true);
+    });
+  });
+
+  describe("updateAttributeDefinition", () => {
+    it("rejects renaming to a key that already exists on the same category", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      const cat = await svc.createCategory({ name: "Vinyl" });
+      await svc.addAttributeDefinition(cat.id, { key: "speed", type: "text" });
+      const second = await svc.addAttributeDefinition(cat.id, {
+        key: "label",
+        type: "text",
+      });
+      await expect(
+        svc.updateAttributeDefinition(second.id, {
+          key: "speed",
+          type: "text",
+        }),
+      ).rejects.toBeInstanceOf(ErrConflict);
+    });
+
+    it("allows widening from required to optional", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      const cat = await svc.createCategory({ name: "Vinyl" });
+      const def = await svc.addAttributeDefinition(cat.id, {
+        key: "color",
+        type: "text",
+        required: true,
+      });
+      const updated = await svc.updateAttributeDefinition(def.id, {
+        key: "color",
+        type: "text",
+        required: false,
+      });
+      expect(updated.required).toBe(false);
+    });
+  });
+
+  describe("deleteAttributeDefinition", () => {
+    it("throws ErrNotFound when id is unknown", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      await expect(
+        svc.deleteAttributeDefinition("missing"),
+      ).rejects.toBeInstanceOf(ErrNotFound);
+    });
+
+    it("removes the definition", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      const cat = await svc.createCategory({ name: "Vinyl" });
+      const def = await svc.addAttributeDefinition(cat.id, {
+        key: "color",
+        type: "text",
+      });
+      await svc.deleteAttributeDefinition(def.id);
+      const remaining = await svc.getDefinitions(cat.id);
+      expect(remaining).toHaveLength(0);
+    });
+  });
+
+  describe("deleteCategory", () => {
+    it("throws ErrNotFound when id is unknown", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs);
+      await expect(
+        svc.deleteCategory("missing"),
+      ).rejects.toBeInstanceOf(ErrNotFound);
+    });
+
+    it("deletes when no items reference the category", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs, {
+        async countByCategory() {
+          return 0;
+        },
+      });
+      const cat = await svc.createCategory({ name: "Vinyl" });
+      await svc.deleteCategory(cat.id);
+      expect(await fakes.categories.findById(cat.id)).toBeNull();
+    });
+
+    it("throws ErrInUse when items still reference the category", async () => {
+      const fakes = makeFakes();
+      const svc = new CategoryService(fakes.categories, fakes.attrs, {
+        async countByCategory() {
+          return 3;
+        },
+      });
+      const cat = await svc.createCategory({ name: "Vinyl" });
+      await expect(
+        svc.deleteCategory(cat.id),
+      ).rejects.toBeInstanceOf(ErrInUse);
+    });
+  });
+});
+
+// --- Admin paths (integration, real PGlite + FK) ---------------------------
+
+describe("CategoryService — admin paths (integration, PGlite)", () => {
+  let db: TestDb;
+  let svc: CategoryService;
+
+  beforeEach(async () => {
+    db = await createTestDb();
+    const catRepo = new CategoryRepository(db);
+    const defRepo = new AttributeDefinitionRepository(db);
+    const itemRepo = new ItemRepository(db);
+    svc = new CategoryService(catRepo, defRepo, itemRepo);
+  });
+
+  afterEach(async () => {
+    await closeTestDb(db);
+  });
+
+  it("create → add attributes → use in intake validation round-trip", async () => {
+    const cat = await svc.createCategory({
+      name: "Funko Pops",
+      description: "Vinyl figures, common and exclusive",
+    });
+    await svc.addAttributeDefinition(cat.id, {
+      key: "series",
+      type: "text",
+      required: true,
+    });
+    await svc.addAttributeDefinition(cat.id, {
+      key: "edition",
+      type: "enum",
+      enumOptions: ["Common", "Chase", "Exclusive"],
+      required: true,
+    });
+
+    const validated = await svc.validateIntake(cat.id, {
+      series: "Marvel",
+      edition: "Chase",
+    });
+    expect(validated.attributes).toEqual({
+      series: "Marvel",
+      edition: "Chase",
+    });
+  });
+
+  it("deleteCategory rejects with ErrInUse when an item references it", async () => {
+    const cat = await svc.createCategory({ name: "Comics" });
+    await new ItemRepository(db).create({
+      categoryId: cat.id,
+      attributes: {},
+    });
+    await expect(
+      svc.deleteCategory(cat.id),
+    ).rejects.toBeInstanceOf(ErrInUse);
+  });
+
+  it("deleteAttributeDefinition removes the row but leaves item JSONB data", async () => {
+    const cat = await svc.createCategory({ name: "Vinyl Records" });
+    const def = await svc.addAttributeDefinition(cat.id, {
+      key: "color",
+      type: "text",
+    });
+    const item = await new ItemRepository(db).create({
+      categoryId: cat.id,
+      attributes: { color: "red" },
+    });
+
+    await svc.deleteAttributeDefinition(def.id);
+    expect(await svc.getDefinitions(cat.id)).toHaveLength(0);
+
+    const fresh = await new ItemRepository(db).findById(item.id);
+    // The historical attribute value is preserved — schema evolution
+    // doesn't retroactively scrub data.
+    expect(fresh?.attributes).toEqual({ color: "red" });
   });
 });

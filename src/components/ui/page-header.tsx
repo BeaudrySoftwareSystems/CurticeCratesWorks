@@ -50,4 +50,5 @@ export function PageHeader({
  */
 export const STANDARD_NAV_LINKS: readonly NavLink[] = [
   { label: "Record uninbound sale", href: "/quick-sale" },
+  { label: "Manage categories", href: "/admin/categories" },
 ];

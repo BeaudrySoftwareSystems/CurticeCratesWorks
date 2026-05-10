@@ -188,6 +188,26 @@ describe("ItemRepository", () => {
     });
   });
 
+  describe("countByCategory", () => {
+    it("returns 0 for an unknown category", async () => {
+      expect(
+        await repo.countByCategory("01HZZZZZZZZZZZZZZZZZZZZZZZ"),
+      ).toBe(0);
+    });
+
+    it("counts items by category id", async () => {
+      const [other] = await db
+        .insert(categories)
+        .values({ name: "Other Cat 2" })
+        .returning();
+      await repo.create({ categoryId, attributes: {} });
+      await repo.create({ categoryId, attributes: {} });
+      await repo.create({ categoryId: other!.id, attributes: {} });
+      expect(await repo.countByCategory(categoryId)).toBe(2);
+      expect(await repo.countByCategory(other!.id)).toBe(1);
+    });
+  });
+
   describe("transactional context", () => {
     it("create / setStatus work inside an outer transaction", async () => {
       await db.transaction(async (tx) => {

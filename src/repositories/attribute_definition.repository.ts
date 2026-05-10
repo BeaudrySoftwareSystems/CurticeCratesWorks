@@ -29,6 +29,18 @@ export class AttributeDefinitionRepository {
       .orderBy(asc(attributeDefinitions.sortOrder), asc(attributeDefinitions.key));
   }
 
+  async findById(
+    id: string,
+    tx?: Db,
+  ): Promise<AttributeDefinition | null> {
+    const handle = tx ?? this.db;
+    const rows = await handle
+      .select()
+      .from(attributeDefinitions)
+      .where(eq(attributeDefinitions.id, id));
+    return rows[0] ?? null;
+  }
+
   async create(
     input: NewAttributeDefinition,
     tx?: Db,
@@ -42,5 +54,37 @@ export class AttributeDefinitionRepository {
       throw new Error("attribute definition insert returned no row");
     }
     return row;
+  }
+
+  async update(
+    id: string,
+    patch: Partial<
+      Pick<
+        NewAttributeDefinition,
+        "key" | "type" | "enumOptions" | "required" | "sortOrder"
+      >
+    >,
+    tx?: Db,
+  ): Promise<AttributeDefinition | null> {
+    const handle = tx ?? this.db;
+    const [row] = await handle
+      .update(attributeDefinitions)
+      .set(patch)
+      .where(eq(attributeDefinitions.id, id))
+      .returning();
+    return row ?? null;
+  }
+
+  /**
+   * Hard delete. Items keep any JSONB attribute values that were set under
+   * this key — they become un-validated free-form data, which is the
+   * correct trade-off for v1 (preserving historical data over schema
+   * purity).
+   */
+  async delete(id: string, tx?: Db): Promise<void> {
+    const handle = tx ?? this.db;
+    await handle
+      .delete(attributeDefinitions)
+      .where(eq(attributeDefinitions.id, id));
   }
 }

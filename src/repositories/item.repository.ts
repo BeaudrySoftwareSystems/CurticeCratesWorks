@@ -1,4 +1,4 @@
-import { and, desc, eq, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, type SQL } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { items, type Item, type NewItem } from "@/db/schema";
 import type { ItemStatus } from "@/domain/item";
@@ -105,5 +105,19 @@ export class ItemRepository {
       .where(eq(items.id, id))
       .returning();
     return row ?? null;
+  }
+
+  /**
+   * Used by the category-admin delete guard so we can refuse the delete
+   * with a meaningful message instead of letting the FK constraint
+   * surface as a generic driver error.
+   */
+  async countByCategory(categoryId: string, tx?: Db): Promise<number> {
+    const handle = tx ?? this.db;
+    const [row] = await handle
+      .select({ value: count() })
+      .from(items)
+      .where(eq(items.categoryId, categoryId));
+    return row?.value ?? 0;
   }
 }

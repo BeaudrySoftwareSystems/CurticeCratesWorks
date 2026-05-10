@@ -83,3 +83,41 @@ export class ErrUnauthenticated extends DomainError {
     this.name = "ErrUnauthenticated";
   }
 }
+
+/**
+ * Surfaced when a delete is rejected because other rows still reference
+ * the row being removed. The Service layer raises this instead of letting
+ * the DB integrity error bubble up — handlers map it to a 409 Conflict.
+ */
+export class ErrInUse extends DomainError {
+  readonly resource: string;
+  readonly id: string;
+  readonly referencedBy: number;
+
+  constructor(resource: string, id: string, referencedBy: number) {
+    super(
+      "in_use",
+      `${resource} ${id} is still referenced by ${referencedBy} row(s)`,
+    );
+    this.name = "ErrInUse";
+    this.resource = resource;
+    this.id = id;
+    this.referencedBy = referencedBy;
+  }
+}
+
+/**
+ * Surfaced for unique-constraint violations (e.g. duplicate category name,
+ * duplicate (categoryId, key) pair on attribute definitions). Service
+ * layer wraps the DB-level error so handlers don't depend on the driver's
+ * error shape.
+ */
+export class ErrConflict extends DomainError {
+  readonly field: string;
+
+  constructor(field: string, message: string) {
+    super("conflict", message);
+    this.name = "ErrConflict";
+    this.field = field;
+  }
+}
