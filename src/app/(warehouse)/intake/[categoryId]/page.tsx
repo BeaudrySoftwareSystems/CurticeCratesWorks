@@ -5,6 +5,7 @@ import { IntakeForm } from "@/components/intake/IntakeForm";
 import { startDraftIntake } from "@/app/actions/intake";
 import { AttributeDefinitionRepository } from "@/repositories/attribute_definition.repository";
 import { CategoryRepository } from "@/repositories/category.repository";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -43,13 +44,16 @@ export default async function IntakeCategoryPage({
   const { itemId } = await startDraftIntake(categoryId);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <IntakeForm
-        itemId={itemId}
-        categoryId={categoryId}
-        categoryName={category.name}
-        definitions={definitions}
-      />
-    </main>
+    <>
+      <PageHeader />
+      <main className="mx-auto max-w-3xl px-4 py-8">
+        <IntakeForm
+          itemId={itemId}
+          categoryId={categoryId}
+          categoryName={category.name}
+          definitions={definitions}
+        />
+      </main>
+    </>
   );
 }

@@ -3,13 +3,15 @@ import { getDb } from "@/db/client";
 import { auth } from "@/lib/auth";
 import { CategoryRepository } from "@/repositories/category.repository";
 import { QuickSaleForm } from "@/components/sale/QuickSaleForm";
+import { PageHeader } from "@/components/ui/page-header";
+import { Display, Label } from "@/components/ui/typography";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Quick-record-sale entry point (R11). The form bypasses category-attribute
- * validation entirely — this is the cold-start escape hatch for items that
- * never went through proper intake.
+ * Quick-record-sale entry point (R11). The form bypasses category-
+ * attribute validation entirely — this is the cold-start escape hatch
+ * for items that never went through proper intake.
  */
 export default async function QuickSalePage(): Promise<React.ReactElement> {
   const session = await auth();
@@ -19,21 +21,23 @@ export default async function QuickSalePage(): Promise<React.ReactElement> {
   const categories = await new CategoryRepository(getDb()).list();
 
   return (
-    <main className="mx-auto grid max-w-3xl gap-6 px-4 py-8">
-      <header className="grid gap-1">
-        <p className="text-xs uppercase tracking-wide text-slate-500">
-          Cold-start path
-        </p>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-          Record sale of an uninbound item
-        </h1>
-        <p className="text-sm text-slate-500">
-          Use this when a sale happens for an item that was never logged
-          through intake. The record will be flagged as <em>intake skipped</em>
-          so it&apos;s distinguishable from full-lifecycle sold items.
-        </p>
-      </header>
-      <QuickSaleForm categories={categories} />
-    </main>
+    <>
+      <PageHeader />
+      <main className="mx-auto grid max-w-3xl gap-7 px-4 py-8">
+        <header className="grid gap-3">
+          <Label>Cold-start path</Label>
+          <Display>Record uninbound sale</Display>
+          <p className="font-sans text-[14px] leading-relaxed text-driftwood">
+            For items sold without going through intake. The record is
+            flagged{" "}
+            <span className="rounded bg-lantern/20 px-1.5 py-px font-mono text-[12px] text-[oklch(40%_0.10_75)]">
+              intake skipped
+            </span>{" "}
+            so it stays distinguishable from full-lifecycle sold items.
+          </p>
+        </header>
+        <QuickSaleForm categories={categories} />
+      </main>
+    </>
   );
 }

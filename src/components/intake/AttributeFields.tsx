@@ -5,16 +5,14 @@ import {
   ENUM_OPTION_MAX_LENGTH,
   TEXT_MAX_LENGTH,
 } from "@/domain/category";
+import { Field, INPUT_CLS } from "@/components/ui/field";
 
 /**
  * Render dynamic per-category form fields. The schema is data, not code
  * (R7) — definitions come from `attribute_definitions` and the renderer
- * matches the dynamic Zod schema built server-side at submit. Field names
- * are namespaced with `attr.` so the Server Action can reconstruct the
- * raw map without colliding with core fields like `cost`.
- *
- * Validation errors come from the Server Action's response (form state)
- * keyed by `attr.<key>`.
+ * matches the dynamic Zod schema built server-side at submit. Field
+ * names are namespaced with `attr.` so the action can reconstruct the
+ * raw map without colliding with core fields.
  */
 export interface AttributeFieldsProps {
   definitions: readonly AttributeDefinition[];
@@ -33,7 +31,7 @@ export function AttributeFields({
 }: AttributeFieldsProps): React.ReactElement {
   if (definitions.length === 0) {
     return (
-      <p className="text-sm text-slate-500 dark:text-slate-400">
+      <p className="font-sans text-[13px] text-driftwood">
         No additional attributes for this category.
       </p>
     );
@@ -46,34 +44,20 @@ export function AttributeFields({
         const error = fieldErrors[name];
         const defaultValue = defaults[def.key] ?? "";
         return (
-          <div key={def.id} className="grid gap-1">
-            <label
-              htmlFor={id}
-              className="text-sm font-medium text-slate-700 dark:text-slate-200"
-            >
-              {humanize(def.key)}
-              {def.required ? (
-                <span aria-hidden className="ml-1 text-rose-600">
-                  *
-                </span>
-              ) : null}
-            </label>
+          <Field
+            key={def.id}
+            htmlFor={id}
+            label={humanize(def.key)}
+            required={def.required}
+            error={error}
+          >
             <FieldInput
               id={id}
               name={name}
               definition={def}
               defaultValue={defaultValue}
-              error={error}
             />
-            {error !== undefined ? (
-              <p
-                role="alert"
-                className="text-sm text-rose-600 dark:text-rose-400"
-              >
-                {error}
-              </p>
-            ) : null}
-          </div>
+          </Field>
         );
       })}
     </div>
@@ -85,7 +69,6 @@ interface FieldInputProps {
   name: string;
   definition: AttributeDefinition;
   defaultValue: string;
-  error: string | undefined;
 }
 
 function FieldInput({
@@ -93,14 +76,7 @@ function FieldInput({
   name,
   definition,
   defaultValue,
-  error,
 }: FieldInputProps): React.ReactElement {
-  const baseClass = `min-h-12 w-full rounded-md border px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 ${
-    error !== undefined
-      ? "border-rose-500 focus:ring-rose-500/40"
-      : "border-slate-300 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900"
-  }`;
-
   switch (definition.type) {
     case "number":
     case "decimal":
@@ -113,24 +89,22 @@ function FieldInput({
           step={definition.type === "decimal" ? "0.01" : "1"}
           required={definition.required}
           defaultValue={defaultValue}
-          className={baseClass}
+          className={`${INPUT_CLS} tabular`}
         />
       );
     case "boolean":
       return (
-        <div className="flex items-center gap-2">
+        <label className="inline-flex min-h-12 items-center gap-3 font-sans text-[14px] text-soot">
           <input
             id={id}
             name={name}
             type="checkbox"
             value="true"
             defaultChecked={defaultValue === "true"}
-            className="h-5 w-5 rounded border-slate-400"
+            className="h-5 w-5 rounded border-edge text-ember focus:ring-ember/30"
           />
-          <span className="text-sm text-slate-600 dark:text-slate-300">
-            Yes
-          </span>
-        </div>
+          <span className="text-driftwood">Yes</span>
+        </label>
       );
     case "enum": {
       const options = definition.enumOptions ?? [];
@@ -140,7 +114,7 @@ function FieldInput({
           name={name}
           defaultValue={defaultValue}
           required={definition.required}
-          className={baseClass}
+          className={INPUT_CLS}
         >
           <option value="">Select…</option>
           {options.map((opt) => (
@@ -164,7 +138,7 @@ function FieldInput({
           maxLength={TEXT_MAX_LENGTH}
           required={definition.required}
           defaultValue={defaultValue}
-          className={baseClass}
+          className={INPUT_CLS}
         />
       );
   }

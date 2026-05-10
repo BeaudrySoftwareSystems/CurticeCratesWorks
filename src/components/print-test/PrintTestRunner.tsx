@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/typography";
 
 /**
- * Drives the three JADENS print paths from the plan's Unit 0.1:
+ * Drives the three JADENS print paths from plan Unit 0.1:
  *
  *   1. navigator.share({ files: [pngFile] })  → preferred if available
  *   2. window.print() against an opened PNG/PDF tab → AirPrint / Default Print
@@ -11,7 +13,7 @@ import { useEffect, useState } from "react";
  *
  * Each "Run" attempt fetches a fresh PNG + PDF (each with its own ULID
  * stamped in the barcode) so the verifier can confirm the printed
- * barcode scans back to the source 10/10 times across formats.
+ * barcode scans back to source 10/10 times across formats.
  */
 
 type Format = "png" | "pdf";
@@ -61,7 +63,6 @@ export function PrintTestRunner(): React.ReactElement {
     setBusy(true);
     setError(null);
     try {
-      // Sequential — share routes care about ULID/format pairing per attempt.
       const newPng = await fetchLabel("png");
       const newPdf = await fetchLabel("pdf");
       setPng(newPng);
@@ -83,28 +84,23 @@ export function PrintTestRunner(): React.ReactElement {
         !navigator.canShare(data)
       ) {
         setError(
-          `navigator.canShare returned false for ${mime} — share-sheet path is not available on this device/browser.`,
+          `navigator.canShare returned false for ${mime}. Share-sheet path is not available on this device/browser.`,
         );
         return;
       }
       await navigator.share(data);
     } catch (err) {
-      // User-cancelled shares throw AbortError — keep that quiet.
       if ((err as DOMException)?.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "share failed");
     }
   };
 
   const printInTab = (label: FetchedLabel): void => {
-    // Open in a new tab and trigger the system print dialog. This is the
-    // path that surfaces AirPrint / Default Print, which is how a paired
-    // JADENS would receive the job if installed as a system printer.
     const w = window.open(label.url, "_blank");
     if (w === null) {
-      setError("Popup blocked — allow popups for /print-test then retry.");
+      setError("Popup blocked. Allow popups for /print-test then retry.");
       return;
     }
-    // Give the document a moment to render before invoking print.
     w.addEventListener("load", () => {
       try {
         w.focus();
@@ -116,93 +112,97 @@ export function PrintTestRunner(): React.ReactElement {
   };
 
   return (
-    <div className="grid gap-6">
-      <section className="grid gap-3">
-        <button
-          type="button"
+    <div className="grid gap-7">
+      <div className="grid gap-3">
+        <Button
+          variant="primary"
           onClick={() => void runOnce()}
           disabled={busy}
-          className="min-h-12 w-full rounded-md bg-blue-600 px-4 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+          className="w-full"
         >
-          {busy ? "Generating…" : png === null ? "Generate test label" : "Generate again"}
-        </button>
+          {busy
+            ? "Generating…"
+            : png === null
+              ? "Generate test label"
+              : "Generate again"}
+        </Button>
         {error !== null ? (
           <p
             role="alert"
-            className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+            className="rounded-md border border-signal/30 bg-signal/10 px-3 py-2 font-sans text-[13px] text-signal"
           >
             {error}
           </p>
         ) : null}
         {shareSupported === false ? (
-          <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            navigator.share is not available on this browser — only the
+          <p className="rounded-md border border-lantern/40 bg-lantern/15 px-3 py-2 font-sans text-[13px] text-[oklch(40%_0.10_75)]">
+            navigator.share is not available on this browser. Only the
             print-in-tab and download paths will work here.
           </p>
         ) : null}
-      </section>
+      </div>
 
       {png !== null && pdf !== null ? (
         <>
-          <section className="grid gap-3">
-            <h2 className="text-sm font-semibold text-slate-700">
-              Path 1 · Share sheet (preferred — JADENS as share target)
-            </h2>
-            <div className="grid grid-cols-2 gap-2">
-              <PathButton
-                label="Share PNG"
-                onClick={() => void share(png, "image/png")}
-              />
-              <PathButton
-                label="Share PDF"
-                onClick={() => void share(pdf, "application/pdf")}
-              />
-            </div>
-          </section>
+          <PathSection
+            ordinal="01"
+            title="Share sheet"
+            subtitle="Preferred — JADENS as share target"
+          >
+            <Button onClick={() => void share(png, "image/png")} className="flex-1">
+              Share PNG
+            </Button>
+            <Button onClick={() => void share(pdf, "application/pdf")} className="flex-1">
+              Share PDF
+            </Button>
+          </PathSection>
+
+          <PathSection
+            ordinal="02"
+            title="System print"
+            subtitle="AirPrint or Default Print, when JADENS is paired"
+          >
+            <Button onClick={() => printInTab(png)} className="flex-1">
+              Print PNG
+            </Button>
+            <Button onClick={() => printInTab(pdf)} className="flex-1">
+              Print PDF
+            </Button>
+          </PathSection>
+
+          <PathSection
+            ordinal="03"
+            title="Download"
+            subtitle="Save, then open in JADENS from Files or Photos"
+          >
+            <a
+              href={png.url}
+              download={png.filename}
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-md border border-edge bg-paper px-4 font-sans text-base font-medium text-soot transition-colors hover:border-driftwood hover:bg-kraft"
+            >
+              Download PNG
+            </a>
+            <a
+              href={pdf.url}
+              download={pdf.filename}
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-md border border-edge bg-paper px-4 font-sans text-base font-medium text-soot transition-colors hover:border-driftwood hover:bg-kraft"
+            >
+              Download PDF
+            </a>
+          </PathSection>
 
           <section className="grid gap-3">
-            <h2 className="text-sm font-semibold text-slate-700">
-              Path 2 · System print (AirPrint / Default Print)
-            </h2>
-            <div className="grid grid-cols-2 gap-2">
-              <PathButton
-                label="Print PNG via browser"
-                onClick={() => printInTab(png)}
-              />
-              <PathButton
-                label="Print PDF via browser"
-                onClick={() => printInTab(pdf)}
-              />
+            <div className="flex items-baseline justify-between">
+              <Label>Preview</Label>
+              <span className="font-sans text-[11px] text-driftwood">
+                ULID …<span className="tabular text-soot">{png.ulid.slice(-6)}</span>
+              </span>
             </div>
-          </section>
-
-          <section className="grid gap-3">
-            <h2 className="text-sm font-semibold text-slate-700">
-              Path 3 · Download → open in JADENS
-            </h2>
-            <div className="grid grid-cols-2 gap-2">
-              <DownloadLink
-                href={png.url}
-                download={png.filename}
-                label="Download PNG"
-              />
-              <DownloadLink
-                href={pdf.url}
-                download={pdf.filename}
-                label="Download PDF"
-              />
-            </div>
-          </section>
-
-          <section className="grid gap-3">
-            <h2 className="text-sm font-semibold text-slate-700">
-              Preview · Current label (ULID {png.ulid.slice(-6)})
-            </h2>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={png.url}
               alt="Generated test label"
-              className="mx-auto max-w-xs rounded border border-slate-200"
+              className="mx-auto w-full max-w-xs rounded-md border border-hairline bg-paper"
             />
           </section>
         </>
@@ -211,40 +211,29 @@ export function PrintTestRunner(): React.ReactElement {
   );
 }
 
-function PathButton({
-  label,
-  onClick,
+function PathSection({
+  ordinal,
+  title,
+  subtitle,
+  children,
 }: {
-  label: string;
-  onClick: () => void;
+  ordinal: string;
+  title: string;
+  subtitle: string;
+  children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="min-h-12 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-    >
-      {label}
-    </button>
-  );
-}
-
-function DownloadLink({
-  href,
-  download,
-  label,
-}: {
-  href: string;
-  download: string;
-  label: string;
-}): React.ReactElement {
-  return (
-    <a
-      href={href}
-      download={download}
-      className="flex min-h-12 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-    >
-      {label}
-    </a>
+    <section className="grid gap-3 border-t border-hairline pt-5">
+      <div className="flex items-baseline gap-3">
+        <span className="tabular text-[12px] text-smoke">{ordinal}</span>
+        <div>
+          <h2 className="font-sans text-[15px] font-medium text-soot">
+            {title}
+          </h2>
+          <p className="font-sans text-[12px] text-driftwood">{subtitle}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">{children}</div>
+    </section>
   );
 }

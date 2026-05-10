@@ -2,6 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
+import { Label } from "@/components/ui/typography";
+import { Select } from "@/components/ui/field";
 
 const STATUS_OPTIONS = [
   { value: "stocked", label: "Stocked" },
@@ -11,10 +13,10 @@ const STATUS_OPTIONS = [
 ] as const;
 
 /**
- * Catalog filter bar. Mutates URL search params so the Server Component
- * page re-fetches with the new filter on the next render — no client
- * state, no client fetch. `useTransition` lets the inputs feel
- * responsive while the navigation+RSC roundtrip resolves.
+ * Catalog filter bar. URL-search-param-driven so the Server Component
+ * page re-fetches on the next render — no client state, no client
+ * fetch. `useTransition` keeps the controls responsive during the
+ * navigation roundtrip.
  */
 export interface FilterBarProps {
   categories: ReadonlyArray<{ id: string; name: string }>;
@@ -46,32 +48,34 @@ export function FilterBar({
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-3 ${pending ? "opacity-70" : ""}`}
+      className={`flex flex-wrap items-end gap-4 rounded-lg border border-hairline bg-paper px-3 py-3 transition-opacity ${pending ? "opacity-70" : ""}`}
     >
-      <label className="grid gap-1 text-sm">
-        <span className="font-medium text-slate-600 dark:text-slate-300">
+      <div className="grid gap-1">
+        <Label as="label" htmlFor="filter-status">
           Status
-        </span>
-        <select
+        </Label>
+        <Select
+          id="filter-status"
           value={currentStatus}
           onChange={(e) => set("status", e.target.value)}
-          className="min-h-10 rounded-md border border-slate-300 px-3 text-base shadow-sm dark:border-slate-700 dark:bg-slate-900"
+          className="min-w-[160px]"
         >
           {STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
           ))}
-        </select>
-      </label>
-      <label className="grid gap-1 text-sm">
-        <span className="font-medium text-slate-600 dark:text-slate-300">
+        </Select>
+      </div>
+      <div className="grid gap-1">
+        <Label as="label" htmlFor="filter-category">
           Category
-        </span>
-        <select
+        </Label>
+        <Select
+          id="filter-category"
           value={currentCategoryId ?? ""}
           onChange={(e) => set("category", e.target.value || null)}
-          className="min-h-10 rounded-md border border-slate-300 px-3 text-base shadow-sm dark:border-slate-700 dark:bg-slate-900"
+          className="min-w-[200px]"
         >
           <option value="">All categories</option>
           {categories.map((c) => (
@@ -79,8 +83,8 @@ export function FilterBar({
               {c.name}
             </option>
           ))}
-        </select>
-      </label>
+        </Select>
+      </div>
     </div>
   );
 }

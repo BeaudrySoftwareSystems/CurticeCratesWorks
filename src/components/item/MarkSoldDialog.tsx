@@ -8,16 +8,17 @@ import {
   markSoldAction,
   type MarkSoldFormState,
 } from "@/app/actions/sale";
+import { Button } from "@/components/ui/button";
+import { Field, Input, Select } from "@/components/ui/field";
+import { Title } from "@/components/ui/typography";
 
 const PLATFORMS = soldPlatformEnum.enumValues;
 const INITIAL: MarkSoldFormState = { status: "idle" };
 
 /**
- * Native <dialog>-backed Mark Sold modal. Renders the form with
- * sold price (required), sold date (default today), platform
- * (defaults to nothing — null means "don't know yet"), and an
- * optional buyer reference. Submits to `markSoldAction`, which
- * redirects to the same item detail on success.
+ * Native <dialog>-backed Mark Sold modal. The interior sits on Kraft
+ * with the Overlay Lift shadow and a warm Soot/40 backdrop — neither
+ * the SaaS-default cool grey nor a glassmorphic blur.
  */
 export interface MarkSoldDialogProps {
   itemId: string;
@@ -41,53 +42,40 @@ export function MarkSoldDialog({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="min-h-12 flex-1 rounded-md bg-blue-600 px-4 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-      >
+      <Button variant="primary" onClick={() => setOpen(true)} className="flex-1">
         Mark sold
-      </button>
+      </Button>
       <dialog
         ref={dialogRef}
-        className="w-full max-w-md rounded-lg p-0 backdrop:bg-slate-900/60"
+        className="w-full max-w-md rounded-xl border border-hairline bg-kraft p-0 text-soot shadow-[0_4px_16px_oklch(22%_0.008_60_/_0.10),0_12px_32px_oklch(22%_0.008_60_/_0.08)] backdrop:bg-soot/40"
         onClose={() => setOpen(false)}
       >
-        <form
-          action={formAction}
-          className="grid gap-4 bg-white p-5 dark:bg-slate-900"
-        >
+        <form action={formAction} className="grid gap-5 p-5">
           <input type="hidden" name="itemId" value={itemId} />
           <header className="grid gap-1">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Mark sold
-            </h2>
-            <p className="text-sm text-slate-500">
-              Capture the sale details. Platform is optional —
-              leave blank if you don&apos;t know yet.
+            <Title>Mark sold</Title>
+            <p className="font-sans text-[13px] text-driftwood">
+              Capture the sale details. Platform is optional, leave blank
+              if you don&apos;t know yet.
             </p>
           </header>
 
           {state.status === "error" && state.message !== undefined ? (
             <p
               role="alert"
-              className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200"
+              className="rounded-md border border-signal/30 bg-signal/10 px-3 py-2 font-sans text-[13px] text-signal"
             >
               {state.message}
             </p>
           ) : null}
 
-          <div className="grid gap-2">
-            <label
-              htmlFor="soldPrice"
-              className="text-sm font-medium text-slate-700 dark:text-slate-200"
-            >
-              Sold price
-              <span aria-hidden className="ml-1 text-rose-600">
-                *
-              </span>
-            </label>
-            <input
+          <Field
+            htmlFor="soldPrice"
+            label="Sold price"
+            required
+            error={state.fieldErrors?.["soldPrice"]}
+          >
+            <Input
               id="soldPrice"
               name="soldPrice"
               type="number"
@@ -96,94 +84,63 @@ export function MarkSoldDialog({
               min="0"
               required
               defaultValue={defaultListPrice ?? ""}
-              className="min-h-12 rounded-md border border-slate-300 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900"
+              className="tabular"
             />
-            {state.fieldErrors?.["soldPrice"] !== undefined ? (
-              <p role="alert" className="text-sm text-rose-600">
-                {state.fieldErrors["soldPrice"]}
-              </p>
-            ) : null}
-          </div>
+          </Field>
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <label
-                htmlFor="platform"
-                className="text-sm font-medium text-slate-700 dark:text-slate-200"
-              >
-                Platform
-              </label>
-              <select
-                id="platform"
-                name="platform"
-                defaultValue=""
-                className="min-h-12 rounded-md border border-slate-300 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900"
-              >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              htmlFor="platform"
+              label="Platform"
+              error={state.fieldErrors?.["platform"]}
+            >
+              <Select id="platform" name="platform" defaultValue="">
                 <option value="">— Not yet known —</option>
                 {PLATFORMS.map((p) => (
                   <option key={p} value={p}>
                     {p}
                   </option>
                 ))}
-              </select>
-              {state.fieldErrors?.["platform"] !== undefined ? (
-                <p role="alert" className="text-sm text-rose-600">
-                  {state.fieldErrors["platform"]}
-                </p>
-              ) : null}
-            </div>
-            <div className="grid gap-2">
-              <label
-                htmlFor="soldAt"
-                className="text-sm font-medium text-slate-700 dark:text-slate-200"
-              >
-                Sold date
-              </label>
-              <input
+              </Select>
+            </Field>
+            <Field
+              htmlFor="soldAt"
+              label="Sold date"
+              error={state.fieldErrors?.["soldAt"]}
+            >
+              <Input
                 id="soldAt"
                 name="soldAt"
                 type="date"
                 defaultValue={new Date().toISOString().slice(0, 10)}
-                className="min-h-12 rounded-md border border-slate-300 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900"
+                className="tabular"
               />
-              {state.fieldErrors?.["soldAt"] !== undefined ? (
-                <p role="alert" className="text-sm text-rose-600">
-                  {state.fieldErrors["soldAt"]}
-                </p>
-              ) : null}
-            </div>
+            </Field>
           </div>
 
-          <div className="grid gap-2">
-            <label
-              htmlFor="buyerReference"
-              className="text-sm font-medium text-slate-700 dark:text-slate-200"
-            >
-              Buyer reference
-            </label>
-            <input
+          <Field
+            htmlFor="buyerReference"
+            label="Buyer reference"
+            hint="depop username, IG handle, or any short identifier"
+            error={state.fieldErrors?.["buyerReference"]}
+          >
+            <Input
               id="buyerReference"
               name="buyerReference"
               type="text"
               maxLength={200}
-              placeholder="e.g. depop username, IG handle"
-              className="min-h-12 rounded-md border border-slate-300 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900"
             />
-            {state.fieldErrors?.["buyerReference"] !== undefined ? (
-              <p role="alert" className="text-sm text-rose-600">
-                {state.fieldErrors["buyerReference"]}
-              </p>
-            ) : null}
-          </div>
+          </Field>
 
-          <div className="flex items-center gap-2">
-            <button
+          <div className="flex items-center gap-2 pt-1">
+            <Button
               type="button"
+              variant="secondary"
               onClick={() => setOpen(false)}
-              className="min-h-12 flex-1 rounded-md border border-slate-300 bg-white px-4 text-base font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="flex-1"
             >
               Cancel
-            </button>
+            </Button>
             <SubmitButton />
           </div>
         </form>
@@ -195,12 +152,13 @@ export function MarkSoldDialog({
 function SubmitButton(): React.ReactElement {
   const { pending } = useFormStatus();
   return (
-    <button
+    <Button
       type="submit"
+      variant="primary"
       disabled={pending}
-      className="min-h-12 flex-1 rounded-md bg-blue-600 px-4 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+      className="flex-1"
     >
-      {pending ? "Saving…" : "Confirm"}
-    </button>
+      {pending ? "Saving…" : "Confirm sale"}
+    </Button>
   );
 }

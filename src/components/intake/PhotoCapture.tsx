@@ -5,16 +5,14 @@ import { upload } from "@vercel/blob/client";
 import { ALLOWED_PHOTO_MIME_TYPES, MAX_PHOTO_BYTES } from "@/domain/photo";
 
 /**
- * Camera-first photo upload widget. Uses the native camera via
- * `<input type="file" capture="environment">`, then hands the file to
- * `@vercel/blob/client.upload()` which posts to /api/blob/upload (the
- * sole Route Handler exception). Uploads are independent of the form
- * submit; the parent form's submit button stays disabled while any
- * upload is in flight.
+ * Camera-first photo upload. `<input type="file" capture="environment">`
+ * invokes the native back camera; uploads run via @vercel/blob/client
+ * against /api/blob/upload (the sole Route Handler exception). Each
+ * upload is independent of the form submit; the parent form's submit
+ * stays disabled while any upload is in flight.
  *
- * The DB photos row is created by the route's `onUploadCompleted`
- * callback (Unit 6) — by the time `upload()` resolves successfully,
- * the photo is already persisted and linked to the item.
+ * The photos row is created server-side by `onUploadCompleted` (Unit 6) —
+ * by the time `upload()` resolves, the photo is already linked.
  */
 
 export interface UploadedPhoto {
@@ -113,8 +111,9 @@ export function PhotoCapture({
     <div className="grid gap-3">
       <label
         htmlFor="photo-input"
-        className="flex min-h-14 cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-slate-300 bg-slate-50 px-4 text-sm font-medium text-slate-600 hover:border-blue-500 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+        className="flex min-h-16 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-edge bg-paper px-4 font-sans text-[14px] font-medium text-driftwood transition-colors hover:border-ember hover:text-ember"
       >
+        <span aria-hidden className="text-base">＋</span>
         Take or attach photo
       </label>
       <input
@@ -134,7 +133,7 @@ export function PhotoCapture({
           {items.map((it) => (
             <li
               key={it.id}
-              className="relative flex aspect-square items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-100 text-center text-xs dark:border-slate-700 dark:bg-slate-800"
+              className="relative flex aspect-square items-center justify-center overflow-hidden rounded-md border border-hairline bg-paper text-center font-sans text-[11px] text-driftwood"
             >
               {it.status === "done" && it.result !== undefined ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -144,9 +143,9 @@ export function PhotoCapture({
                   className="absolute inset-0 h-full w-full object-cover"
                 />
               ) : it.status === "uploading" ? (
-                <span className="text-slate-500">Uploading…</span>
+                <span>Uploading…</span>
               ) : (
-                <span className="px-1 text-rose-600">
+                <span className="px-1 text-signal">
                   {it.errorMessage ?? "Failed"}
                 </span>
               )}

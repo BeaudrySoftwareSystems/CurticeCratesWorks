@@ -18,7 +18,7 @@ vi.mock("@vercel/blob/client", () => ({
 import { IntakeForm } from "@/components/intake/IntakeForm";
 
 describe("IntakeForm", () => {
-  it("renders the section headings, sticky save button, and required core fields", () => {
+  it("renders the section eyebrows, sticky save button, and required core fields", () => {
     render(
       <IntakeForm
         itemId="item-1"
@@ -28,16 +28,15 @@ describe("IntakeForm", () => {
       />,
     );
 
+    // The page title shows the category name.
     expect(screen.getByText(/New Clothing/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: /Photos/i, level: 2 }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: /Attributes/i, level: 2 }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: /Location/i, level: 2 }),
-    ).toBeInTheDocument();
+    // Section eyebrows are uppercase Labels (not h2 headings) per the new
+    // hierarchy — assert their visible text instead of role.
+    expect(screen.getByText(/^Photos$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Attributes$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Location$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Pricing$/i)).toBeInTheDocument();
+
     expect(screen.getByLabelText(/^Cost/i)).toBeRequired();
     expect(screen.getByLabelText(/List price/i)).not.toBeRequired();
     expect(

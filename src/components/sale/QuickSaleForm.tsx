@@ -8,18 +8,18 @@ import {
   type QuickRecordSaleFormState,
 } from "@/app/actions/sale";
 import { TEXT_MAX_LENGTH } from "@/domain/category";
+import { Button } from "@/components/ui/button";
+import { Field, Input, Select } from "@/components/ui/field";
+import { Label } from "@/components/ui/typography";
 
 const PLATFORMS = soldPlatformEnum.enumValues;
 const INITIAL: QuickRecordSaleFormState = { status: "idle" };
 
 /**
- * Quick-record-sale form (R11). Bypasses category-attribute validation
- * — `intake_skipped = true` on the items row is the data-level guard
- * that distinguishes these stub records from full-lifecycle items
- * (rendered as a badge in CatalogList).
- *
- * Title is optional but recommended — without it the catalog card
- * shows only the display id.
+ * Quick-record-sale form (R11). Bypasses category-attribute validation —
+ * `intake_skipped = true` on the items row is the data-level guard that
+ * distinguishes these stub records from full-lifecycle items (rendered
+ * as a Lantern Amber badge in CatalogList).
  */
 export interface QuickSaleFormProps {
   categories: ReadonlyArray<{ id: string; name: string }>;
@@ -31,162 +31,115 @@ export function QuickSaleForm({
   const [state, formAction] = useActionState(quickRecordSaleAction, INITIAL);
 
   return (
-    <form action={formAction} className="grid gap-6 pb-24">
+    <form action={formAction} className="grid gap-7 pb-24">
       {state.status === "error" && state.message !== undefined ? (
         <p
           role="alert"
-          className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200"
+          className="rounded-md border border-signal/30 bg-signal/10 px-3 py-2 font-sans text-[14px] text-signal"
         >
           {state.message}
         </p>
       ) : null}
 
-      <section className="grid gap-3 sm:grid-cols-2">
-        <div className="grid gap-2">
-          <label
+      <Section eyebrow="Sale">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
             htmlFor="soldPrice"
-            className="text-sm font-medium text-slate-700 dark:text-slate-200"
-          >
-            Sold price
-            <span aria-hidden className="ml-1 text-rose-600">
-              *
-            </span>
-          </label>
-          <input
-            id="soldPrice"
-            name="soldPrice"
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0"
+            label="Sold price"
             required
-            placeholder="0.00"
-            className="min-h-12 rounded-md border border-slate-300 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900"
-          />
-          {state.fieldErrors?.["soldPrice"] !== undefined ? (
-            <p role="alert" className="text-sm text-rose-600">
-              {state.fieldErrors["soldPrice"]}
-            </p>
-          ) : null}
-        </div>
-        <div className="grid gap-2">
-          <label
+            error={state.fieldErrors?.["soldPrice"]}
+          >
+            <Input
+              id="soldPrice"
+              name="soldPrice"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              required
+              placeholder="0.00"
+              className="tabular"
+            />
+          </Field>
+          <Field
             htmlFor="soldAt"
-            className="text-sm font-medium text-slate-700 dark:text-slate-200"
+            label="Sold date"
+            error={state.fieldErrors?.["soldAt"]}
           >
-            Sold date
-          </label>
-          <input
-            id="soldAt"
-            name="soldAt"
-            type="date"
-            defaultValue={new Date().toISOString().slice(0, 10)}
-            className="min-h-12 rounded-md border border-slate-300 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900"
-          />
-          {state.fieldErrors?.["soldAt"] !== undefined ? (
-            <p role="alert" className="text-sm text-rose-600">
-              {state.fieldErrors["soldAt"]}
-            </p>
-          ) : null}
+            <Input
+              id="soldAt"
+              name="soldAt"
+              type="date"
+              defaultValue={new Date().toISOString().slice(0, 10)}
+              className="tabular"
+            />
+          </Field>
         </div>
-      </section>
+      </Section>
 
-      <section className="grid gap-3 sm:grid-cols-2">
-        <div className="grid gap-2">
-          <label
+      <Section eyebrow="Channel">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
             htmlFor="platform"
-            className="text-sm font-medium text-slate-700 dark:text-slate-200"
+            label="Platform"
+            error={state.fieldErrors?.["platform"]}
           >
-            Platform
-          </label>
-          <select
-            id="platform"
-            name="platform"
-            defaultValue=""
-            className="min-h-12 rounded-md border border-slate-300 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900"
-          >
-            <option value="">— Not yet known —</option>
-            {PLATFORMS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-          {state.fieldErrors?.["platform"] !== undefined ? (
-            <p role="alert" className="text-sm text-rose-600">
-              {state.fieldErrors["platform"]}
-            </p>
-          ) : null}
+            <Select id="platform" name="platform" defaultValue="">
+              <option value="">— Not yet known —</option>
+              {PLATFORMS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field htmlFor="categoryId" label="Category">
+            <Select id="categoryId" name="categoryId" defaultValue="">
+              <option value="">— Uncategorized —</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
         </div>
-        <div className="grid gap-2">
-          <label
-            htmlFor="categoryId"
-            className="text-sm font-medium text-slate-700 dark:text-slate-200"
+      </Section>
+
+      <Section eyebrow="Identifiers">
+        <div className="grid gap-4">
+          <Field
+            htmlFor="title"
+            label="Title"
+            hint="Short identifier — recommended for catalog readability"
+            error={state.fieldErrors?.["title"]}
           >
-            Category
-          </label>
-          <select
-            id="categoryId"
-            name="categoryId"
-            defaultValue=""
-            className="min-h-12 rounded-md border border-slate-300 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900"
+            <Input
+              id="title"
+              name="title"
+              type="text"
+              maxLength={TEXT_MAX_LENGTH}
+              placeholder="e.g. vintage tee, Charizard PSA 9"
+            />
+          </Field>
+          <Field
+            htmlFor="buyerReference"
+            label="Buyer reference"
+            error={state.fieldErrors?.["buyerReference"]}
           >
-            <option value="">— Uncategorized —</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            <Input
+              id="buyerReference"
+              name="buyerReference"
+              type="text"
+              maxLength={TEXT_MAX_LENGTH}
+              placeholder="depop username, IG handle"
+            />
+          </Field>
         </div>
-      </section>
+      </Section>
 
-      <div className="grid gap-2">
-        <label
-          htmlFor="title"
-          className="text-sm font-medium text-slate-700 dark:text-slate-200"
-        >
-          Title
-        </label>
-        <input
-          id="title"
-          name="title"
-          type="text"
-          maxLength={TEXT_MAX_LENGTH}
-          placeholder="Short identifier (recommended)"
-          className="min-h-12 rounded-md border border-slate-300 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900"
-        />
-        {state.fieldErrors?.["title"] !== undefined ? (
-          <p role="alert" className="text-sm text-rose-600">
-            {state.fieldErrors["title"]}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="grid gap-2">
-        <label
-          htmlFor="buyerReference"
-          className="text-sm font-medium text-slate-700 dark:text-slate-200"
-        >
-          Buyer reference
-        </label>
-        <input
-          id="buyerReference"
-          name="buyerReference"
-          type="text"
-          maxLength={TEXT_MAX_LENGTH}
-          placeholder="e.g. depop username, IG handle"
-          className="min-h-12 rounded-md border border-slate-300 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900"
-        />
-        {state.fieldErrors?.["buyerReference"] !== undefined ? (
-          <p role="alert" className="text-sm text-rose-600">
-            {state.fieldErrors["buyerReference"]}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
-        <div className="mx-auto flex max-w-3xl items-center gap-3">
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-hairline bg-kraft">
+        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
           <SubmitButton />
         </div>
       </div>
@@ -194,15 +147,31 @@ export function QuickSaleForm({
   );
 }
 
+function Section({
+  eyebrow,
+  children,
+}: {
+  eyebrow: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <section className="grid gap-3">
+      <Label>{eyebrow}</Label>
+      {children}
+    </section>
+  );
+}
+
 function SubmitButton(): React.ReactElement {
   const { pending } = useFormStatus();
   return (
-    <button
+    <Button
       type="submit"
+      variant="primary"
       disabled={pending}
-      className="min-h-12 flex-1 rounded-md bg-blue-600 px-4 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+      className="flex-1"
     >
       {pending ? "Recording…" : "Record sale"}
-    </button>
+    </Button>
   );
 }

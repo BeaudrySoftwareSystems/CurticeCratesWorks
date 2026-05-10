@@ -1,28 +1,42 @@
 import Link from "next/link";
 import type { Item } from "@/db/schema";
 import type { Photo } from "@/domain/photo";
+import { Badge, StatusBadge } from "@/components/ui/badge";
+import { DisplayId } from "@/components/ui/wordmark";
+import { Tabular } from "@/components/ui/typography";
 
 /**
  * Catalog grid. Server Component — receives a fully-resolved list of
- * items + a per-item cover photo URL (or null) so it can render without
- * any extra round-trips. Cards link to the item detail page.
+ * items + a per-item cover photo so it can render without extra round-
+ * trips. Cards link to item detail.
+ *
+ * Per DESIGN.md: surface tone (Kraft over Bone) carries depth. No
+ * resting shadow — the Hover Lift class only attaches on hover/focus.
+ * Every numeric is wrapped in `<Tabular>` so the prices and IDs align
+ * cleanly across rows.
  */
 export interface CatalogListProps {
   items: ReadonlyArray<Item & { categoryName: string | null }>;
   coverByItemId: Map<string, Photo>;
   blobBaseUrl: string | undefined;
+  emptyState?: React.ReactNode;
 }
 
 export function CatalogList({
   items,
   coverByItemId,
   blobBaseUrl,
+  emptyState,
 }: CatalogListProps): React.ReactElement {
   if (items.length === 0) {
     return (
-      <p className="rounded-md border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">
-        No items match this filter.
-      </p>
+      <div className="rounded-lg border border-dashed border-edge bg-paper px-6 py-10 text-center">
+        {emptyState ?? (
+          <p className="font-sans text-[15px] text-driftwood">
+            No items match this filter.
+          </p>
+        )}
+      </div>
     );
   }
   return (
@@ -40,9 +54,9 @@ export function CatalogList({
               href={
                 `/items/${item.id}` as Parameters<typeof Link>[0]["href"]
               }
-              className="group block overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm transition hover:border-blue-500 hover:shadow-md dark:border-slate-700 dark:bg-slate-900"
+              className="group block overflow-hidden rounded-lg border border-hairline bg-kraft transition-shadow duration-150 hover:border-edge hover:shadow-[0_1px_2px_oklch(22%_0.008_60_/_0.06),0_4px_12px_oklch(22%_0.008_60_/_0.04)] focus:outline-none focus-visible:ring-2 focus-visible:ring-ember/40"
             >
-              <div className="relative aspect-square w-full bg-slate-100 dark:bg-slate-800">
+              <div className="relative aspect-square w-full bg-paper">
                 {photoUrl !== null ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -51,39 +65,30 @@ export function CatalogList({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+                  <div className="flex h-full w-full items-center justify-center font-sans text-[11px] uppercase tracking-[0.08em] text-smoke">
                     No photo
                   </div>
                 )}
-                <span
-                  className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${statusBadge(item.status)}`}
-                >
-                  {item.status}
+                <span className="absolute right-2 top-2">
+                  <StatusBadge status={item.status} />
                 </span>
                 {item.intakeSkipped ? (
-                  <span
-                    className="absolute left-2 top-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-800"
-                    title="Created via quick-record-sale; never went through intake"
-                  >
-                    Intake skipped
+                  <span className="absolute left-2 top-2">
+                    <Badge tone="intake-skipped">intake skipped</Badge>
                   </span>
                 ) : null}
               </div>
-              <div className="grid gap-0.5 p-3">
-                <p className="text-xs uppercase tracking-wide text-slate-500">
-                  {item.categoryName ?? "Uncategorized"} ·{" "}
-                  #{String(item.displayId).padStart(6, "0")}
-                </p>
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+              <div className="grid gap-1 px-3 py-2.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-sans text-[10px] font-medium uppercase tracking-[0.08em] text-driftwood">
+                    {item.categoryName ?? "Uncategorized"}
+                  </span>
+                  <DisplayId displayId={item.displayId} />
+                </div>
+                <p className="line-clamp-1 font-sans text-[14px] font-medium text-soot">
                   {firstAttribute(item.attributes as Record<string, unknown>)}
                 </p>
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  {item.listPrice !== null
-                    ? `$${item.listPrice}`
-                    : item.cost !== null
-                      ? `cost $${item.cost}`
-                      : ""}
-                </p>
+                <PriceLine item={item} />
               </div>
             </Link>
           </li>
@@ -93,20 +98,29 @@ export function CatalogList({
   );
 }
 
-function statusBadge(status: string): string {
-  switch (status) {
-    case "stocked":
-      return "bg-emerald-100 text-emerald-800";
-    case "sold":
-      return "bg-blue-100 text-blue-800";
-    default:
-      return "bg-slate-200 text-slate-800";
+function PriceLine({
+  item,
+}: {
+  item: Item;
+}): React.ReactElement | null {
+  if (item.listPrice !== null) {
+    return (
+      <p className="font-sans text-[13px] text-soot">
+        <Tabular>${item.listPrice}</Tabular>
+      </p>
+    );
   }
+  if (item.cost !== null) {
+    return (
+      <p className="font-sans text-[12px] text-driftwood">
+        cost <Tabular>${item.cost}</Tabular>
+      </p>
+    );
+  }
+  return <p className="font-sans text-[12px] text-smoke">—</p>;
 }
 
 function firstAttribute(attrs: Record<string, unknown>): string {
-  // Quick-sale items stash a free-form title under attributes.title — render
-  // it plain (no "title: " prefix) so the card reads naturally.
   if (typeof attrs["title"] === "string" && attrs["title"] !== "") {
     return attrs["title"];
   }

@@ -6,14 +6,10 @@ import { ItemRepository } from "@/repositories/item.repository";
 import { PhotoRepository } from "@/repositories/photo.repository";
 import { SaleRepository } from "@/repositories/sale.repository";
 import { ItemDetail } from "@/components/item/ItemDetail";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Item detail page. Loads item + category + photos + sale row in parallel
- * and hands them to the ItemDetail Server Component, which wires the
- * Mark Sold and Archive dialogs based on current status.
- */
 export default async function ItemDetailPage({
   params,
 }: {
@@ -38,14 +34,17 @@ export default async function ItemDetailPage({
   ]);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <ItemDetail
-        item={item}
-        category={category}
-        photos={photos}
-        sale={sale}
-        blobBaseUrl={process.env["BLOB_STORE_BASE_URL"]}
-      />
-    </main>
+    <>
+      <PageHeader />
+      <main className="mx-auto max-w-3xl px-4 py-8">
+        <ItemDetail
+          item={item}
+          category={category}
+          photos={photos}
+          sale={sale}
+          blobBaseUrl={process.env["BLOB_STORE_BASE_URL"]}
+        />
+      </main>
+    </>
   );
 }

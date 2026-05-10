@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db/client";
 import { auth } from "@/lib/auth";
@@ -7,6 +6,9 @@ import { ItemRepository, type ListFilter } from "@/repositories/item.repository"
 import { PhotoRepository } from "@/repositories/photo.repository";
 import { CatalogList } from "@/components/catalog/CatalogList";
 import { FilterBar } from "@/components/catalog/FilterBar";
+import { LinkButton } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
+import { Display, Label, Tabular } from "@/components/ui/typography";
 import type { ItemStatus } from "@/domain/item";
 import type { Photo } from "@/domain/photo";
 
@@ -22,8 +24,7 @@ const VALID_STATUSES: readonly ItemStatus[] = ["stocked", "sold", "archived"];
  *   4. renders FilterBar (Client) + CatalogList (Server)
  *
  * Default view is `status=stocked`. Filtering is one-trip — no client
- * fetch — so the URL is always the source of truth and back/forward
- * navigation behaves as expected.
+ * fetch — so the URL is always source of truth.
  */
 export default async function CatalogHomePage({
   searchParams,
@@ -71,41 +72,65 @@ export default async function CatalogHomePage({
   }));
 
   return (
-    <main className="mx-auto grid max-w-5xl gap-6 px-4 py-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="grid gap-1">
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-            Curtis Crates catalog
-          </h1>
-          <p className="text-sm text-slate-500">
-            Signed in as {session.user.email}.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href={{ pathname: "/quick-sale" }}
-            className="flex min-h-12 items-center rounded-md border border-slate-300 bg-white px-4 text-base font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            Record uninbound sale
-          </Link>
-          <Link
-            href={{ pathname: "/intake" }}
-            className="flex min-h-12 items-center rounded-md bg-blue-600 px-4 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700"
-          >
-            New intake
-          </Link>
-        </div>
-      </header>
-      <FilterBar
-        categories={categories}
-        currentStatus={statusParam}
-        {...(categoryParam !== "" ? { currentCategoryId: categoryParam } : {})}
+    <>
+      <PageHeader
+        right={
+          <>
+            <LinkButton href="/quick-sale">Record uninbound sale</LinkButton>
+            <LinkButton href="/intake" variant="primary">
+              New intake
+            </LinkButton>
+          </>
+        }
       />
-      <CatalogList
-        items={itemsWithCategory}
-        coverByItemId={coverByItemId}
-        blobBaseUrl={process.env["BLOB_STORE_BASE_URL"]}
-      />
-    </main>
+      <main className="mx-auto grid max-w-5xl gap-6 px-4 py-8">
+        <header className="grid gap-3">
+          <Label>Catalog</Label>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <Display>Inventory</Display>
+            <p className="font-sans text-[13px] text-driftwood">
+              <Tabular>{items.length}</Tabular>{" "}
+              {items.length === 1 ? "item" : "items"} · {statusLabel(statusParam)}
+              {" · "}
+              <span className="text-soot">{session.user.email}</span>
+            </p>
+          </div>
+        </header>
+        <FilterBar
+          categories={categories}
+          currentStatus={statusParam}
+          {...(categoryParam !== "" ? { currentCategoryId: categoryParam } : {})}
+        />
+        <CatalogList
+          items={itemsWithCategory}
+          coverByItemId={coverByItemId}
+          blobBaseUrl={process.env["BLOB_STORE_BASE_URL"]}
+          emptyState={
+            <div className="grid gap-3 py-2">
+              <p className="font-sans text-[14px] text-soot">
+                Nothing {statusParam === "all" ? "" : statusLabel(statusParam).toLowerCase()} here yet.
+              </p>
+              <p className="font-sans text-[13px] text-driftwood">
+                Start an intake to add the first item, or record a sale of
+                an item that never went through the system.
+              </p>
+            </div>
+          }
+        />
+      </main>
+    </>
   );
+}
+
+function statusLabel(s: string): string {
+  switch (s) {
+    case "stocked":
+      return "Stocked";
+    case "sold":
+      return "Sold";
+    case "archived":
+      return "Archived";
+    default:
+      return "All statuses";
+  }
 }

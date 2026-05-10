@@ -1,16 +1,52 @@
 @import "tailwindcss";
 
 /**
- * Curtis Crates warehouse UI lives on phones in less-than-ideal lighting.
- * The base styles below tune Tailwind's defaults for that context: larger
- * tap targets, system-font stack, and the iOS-Safari font-size fix to
- * prevent zoom-on-focus on small screens.
+ * Curtis Crates design tokens — see DESIGN.md for the full system.
+ *
+ * Color: warm-tinted neutrals (every neutral has chroma ≥ 0.005 toward the
+ * Crate Ember hue ≈ 40°), one saturated accent reserved for primary
+ * actions, two status hues that sit ≥ 30° away from Ember on the wheel.
+ *
+ * Type: Geist Sans + Geist Mono via next/font (loaded in layout.tsx). Mono
+ * is the carrier for every numeric in the system.
+ *
+ * Light-by-default. Dark-mode opt-in lands in a future pass — for now the
+ * `light` color-scheme prevents the OS from auto-flipping the palette.
  */
 
+@theme {
+  /* Surface tones (warm off-white spectrum) */
+  --color-bone: oklch(98% 0.008 60);
+  --color-kraft: oklch(94% 0.012 60);
+  --color-paper: oklch(99% 0.005 60);
+
+  /* Text */
+  --color-soot: oklch(22% 0.008 60);
+  --color-driftwood: oklch(50% 0.010 60);
+  --color-smoke: oklch(72% 0.006 60);
+
+  /* Lines + edges */
+  --color-hairline: oklch(90% 0.005 60);
+  --color-edge: oklch(80% 0.008 60);
+
+  /* The one accent — primary actions only, ≤10% of any surface */
+  --color-ember: oklch(64% 0.165 40);
+  --color-ember-deep: oklch(56% 0.180 40);
+
+  /* Status — distinct hues from Ember (≥30° apart on OKLCH wheel) */
+  --color-signal: oklch(58% 0.175 25);
+  --color-lantern: oklch(75% 0.135 75);
+
+  /* Type families pull from next/font CSS variables set in layout.tsx */
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  --font-mono:
+    var(--font-geist-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, monospace;
+}
+
+/* Force light mode for v1 — DESIGN.md treats dark as a future opt-in. */
 :root {
-  color-scheme: light dark;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
 }
 
 html,
@@ -18,10 +54,30 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100dvh;
+  font-family: var(--font-sans);
 }
 
+/* iOS Safari zoom-on-focus suppression for inputs. */
 input,
 select,
 textarea {
   font-size: 16px;
+}
+
+/* The Numeric-Mono utility — wrap any digit-bearing span so price, ID, and
+ * date columns line up across rows without effort. */
+@utility tabular {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Honor user motion preference — strip transitions and animations. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }

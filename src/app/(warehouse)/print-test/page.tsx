@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { PrintTestRunner } from "@/components/print-test/PrintTestRunner";
+import { PageHeader } from "@/components/ui/page-header";
+import { Display, Label } from "@/components/ui/typography";
 
 export const dynamic = "force-dynamic";
 
@@ -18,30 +20,21 @@ export default async function PrintTestPage(): Promise<React.ReactElement> {
     redirect("/sign-in");
   }
   return (
-    <main className="mx-auto grid max-w-2xl gap-6 px-4 py-8">
-      <header className="grid gap-2">
-        <p className="text-xs uppercase tracking-wide text-slate-500">
-          Planning prerequisite · Unit 0.1
-        </p>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-          JADENS print-path verification
-        </h1>
-        <p className="text-sm text-slate-500">
-          Tap <strong>Generate test label</strong>, then exercise each of
-          the three paths below. For each path, attempt 5 prints and
-          record:
-        </p>
-        <ul className="ml-5 list-disc text-sm text-slate-500">
-          <li>Did JADENS appear / accept the file?</li>
-          <li>Time from tap to print.</li>
-          <li>Did the printed barcode scan back to the label&apos;s ULID?</li>
-        </ul>
-        <p className="text-sm text-slate-500">
-          The path with 5/5 success and 10/10 scan-back becomes the
-          primary in Unit 11.
-        </p>
-      </header>
-      <PrintTestRunner />
-    </main>
+    <>
+      <PageHeader />
+      <main className="mx-auto grid max-w-2xl gap-6 px-4 py-8">
+        <header className="grid gap-3">
+          <Label>Planning prerequisite · Unit 0.1</Label>
+          <Display>JADENS print verification</Display>
+          <p className="font-sans text-[14px] leading-relaxed text-driftwood">
+            Generate a test label, then exercise each of the three paths
+            below. Per path: 5 print attempts, record JADENS acceptance,
+            time-to-print, and 10/10 barcode scan-back. The path that
+            wins becomes Unit 11&apos;s primary.
+          </p>
+        </header>
+        <PrintTestRunner />
+      </main>
+    </>
   );
 }
