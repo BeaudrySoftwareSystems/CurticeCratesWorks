@@ -30,6 +30,12 @@ function makeFakes(): {
     create: (input: NewItem) => Promise<Item>;
     findById: (id: string) => Promise<Item | null>;
     setStatus: (id: string, status: ItemStatus) => Promise<Item | null>;
+    update: (
+      id: string,
+      patch: Partial<
+        Pick<NewItem, "attributes" | "cost" | "listPrice" | "location">
+      >,
+    ) => Promise<Item | null>;
   };
   sales: { create: (input: NewSale) => Promise<Sale> };
   store: { items: Map<string, Stored>; sales: Map<string, Sale> };
@@ -66,6 +72,27 @@ function makeFakes(): {
       const row = items.get(id);
       if (row === undefined) return null;
       const updated = { ...row, status, updatedAt: new Date() };
+      items.set(id, updated);
+      return updated;
+    },
+    async update(
+      id: string,
+      patch: Partial<
+        Pick<NewItem, "attributes" | "cost" | "listPrice" | "location">
+      >,
+    ): Promise<Item | null> {
+      const row = items.get(id);
+      if (row === undefined) return null;
+      const updated: Stored = {
+        ...row,
+        ...(patch.attributes !== undefined
+          ? { attributes: patch.attributes }
+          : {}),
+        ...(patch.cost !== undefined ? { cost: patch.cost } : {}),
+        ...(patch.listPrice !== undefined ? { listPrice: patch.listPrice } : {}),
+        ...(patch.location !== undefined ? { location: patch.location } : {}),
+        updatedAt: new Date(),
+      };
       items.set(id, updated);
       return updated;
     },
@@ -127,6 +154,47 @@ describe("ItemService (unit, fake repos)", () => {
       expect.objectContaining({ event: "item.created", itemId: item.id }),
       expect.any(String),
     );
+  });
+
+  it("finalizeIntake: applies attributes/cost/listPrice/location to a stocked draft", async () => {
+    const fakes = makeFakes();
+    const svc = new ItemService(fakeDb(), fakes.items, fakes.sales, silentLogger);
+    const draft = await svc.createItem({ categoryId: "cat-1" });
+
+    const finalized = await svc.finalizeIntake(draft.id, {
+      attributes: { brand: "Levi's", size: "32" },
+      cost: "15.00",
+      listPrice: "45.00",
+      location: "B3",
+    });
+
+    expect(finalized.attributes).toEqual({ brand: "Levi's", size: "32" });
+    expect(finalized.cost).toBe("15.00");
+    expect(finalized.listPrice).toBe("45.00");
+    expect(finalized.location).toBe("B3");
+    expect(finalized.status).toBe("stocked");
+  });
+
+  it("finalizeIntake: throws ErrNotFound when the draft id is unknown", async () => {
+    const fakes = makeFakes();
+    const svc = new ItemService(fakeDb(), fakes.items, fakes.sales, silentLogger);
+    await expect(
+      svc.finalizeIntake("01HZZZZZZZZZZZZZZZZZZZZZZZ", {
+        attributes: {},
+        cost: "1.00",
+      }),
+    ).rejects.toBeInstanceOf(ErrNotFound);
+  });
+
+  it("finalizeIntake: refuses to finalize an item that has already been sold", async () => {
+    const fakes = makeFakes();
+    const svc = new ItemService(fakeDb(), fakes.items, fakes.sales, silentLogger);
+    const draft = await svc.createItem({ categoryId: "cat-1" });
+    await svc.markSold(draft.id, { soldPrice: "30.00" });
+
+    await expect(
+      svc.finalizeIntake(draft.id, { attributes: {}, cost: "5.00" }),
+    ).rejects.toBeInstanceOf(ErrInvalidTransition);
   });
 
   it("markSold: stocked → sold, atomically inserts sale row", async () => {

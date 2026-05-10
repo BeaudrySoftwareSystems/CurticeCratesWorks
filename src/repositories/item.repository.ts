@@ -62,4 +62,20 @@ export class ItemRepository {
       .returning();
     return row ?? null;
   }
+
+  async update(
+    id: string,
+    patch: Partial<
+      Pick<NewItem, "attributes" | "cost" | "listPrice" | "location">
+    >,
+    tx?: Db,
+  ): Promise<Item | null> {
+    const handle = tx ?? this.db;
+    const [row] = await handle
+      .update(items)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(items.id, id))
+      .returning();
+    return row ?? null;
+  }
 }

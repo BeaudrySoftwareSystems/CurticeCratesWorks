@@ -637,7 +637,7 @@ flowchart TD
 
 ### Phase 3: UI — intake, catalog, sale recording
 
-- [ ] **Unit 7: Mobile-first intake flow + Server Action wiring**
+- [x] **Unit 7: Mobile-first intake flow + Server Action wiring** *(shipped 2026-05-10; intake creates a draft item at page mount so photos can attach to a real `stocked` id, then `finalizeIntakeAction` updates it — see commit message for the deviation rationale)*
 
 **Goal:** Phone-friendly intake: pick category → take photos → fill attributes → set location and cost → tap Print Label. Single primary action.
 

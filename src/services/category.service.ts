@@ -41,6 +41,17 @@ export class CategoryService {
     private readonly attrs: AttributeDefinitionReader,
   ) {}
 
+  /**
+   * Public accessor used by the intake Server Action to coerce FormData
+   * strings (e.g. "12" → 12, "on" → true) into the shapes the dynamic
+   * schema expects. The action does NOT rebuild the schema — it just
+   * inspects the def types — and immediately follows up with
+   * `validateIntake`, which is still the single trust boundary.
+   */
+  async getDefinitions(categoryId: string): Promise<AttributeDefinition[]> {
+    return this.attrs.listForCategory(categoryId);
+  }
+
   async validateIntake(
     categoryId: string,
     rawAttributes: Record<string, unknown>,

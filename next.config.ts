@@ -2,10 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  experimental: {
-    typedRoutes: true,
-  },
-  // No image domains configured yet — added in Phase 2 when Vercel Blob is wired.
+  // typedRoutes graduated out of `experimental` in Next 15.5.
+  typedRoutes: true,
+  // Vercel Blob photo URLs need to be allowlisted for next/image. We use plain
+  // <img> for now (CSS sizing only — see plan B3); switch to next/image when
+  // measured catalog perf demands it.
 };
 
 export default nextConfig;

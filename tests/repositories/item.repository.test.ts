@@ -105,6 +105,36 @@ describe("ItemRepository", () => {
     });
   });
 
+  describe("update", () => {
+    it("applies attributes / cost / listPrice / location and bumps updatedAt", async () => {
+      const item = await repo.create({ categoryId, attributes: {} });
+      const before = item.updatedAt.getTime();
+
+      await new Promise((r) => setTimeout(r, 5));
+      const updated = await repo.update(item.id, {
+        attributes: { brand: "Nike", size: "M" },
+        cost: "20.00",
+        listPrice: "60.00",
+        location: "A1",
+      });
+
+      expect(updated).not.toBeNull();
+      expect(updated?.attributes).toEqual({ brand: "Nike", size: "M" });
+      expect(updated?.cost).toBe("20.00");
+      expect(updated?.listPrice).toBe("60.00");
+      expect(updated?.location).toBe("A1");
+      expect((updated as { updatedAt: Date }).updatedAt.getTime()).toBeGreaterThan(
+        before,
+      );
+    });
+
+    it("returns null when the target item does not exist", async () => {
+      expect(
+        await repo.update("01HZZZZZZZZZZZZZZZZZZZZZZZ", { cost: "1.00" }),
+      ).toBeNull();
+    });
+  });
+
   describe("transactional context", () => {
     it("create / setStatus work inside an outer transaction", async () => {
       await db.transaction(async (tx) => {

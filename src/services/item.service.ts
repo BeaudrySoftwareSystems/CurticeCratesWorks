@@ -28,6 +28,13 @@ export interface ItemReader {
 export interface ItemWriter {
   create(input: NewItem, tx?: Db): Promise<Item>;
   setStatus(id: string, status: ItemStatus, tx?: Db): Promise<Item | null>;
+  update(
+    id: string,
+    patch: Partial<
+      Pick<NewItem, "attributes" | "cost" | "listPrice" | "location">
+    >,
+    tx?: Db,
+  ): Promise<Item | null>;
 }
 export interface SaleWriter {
   create(input: NewSale, tx?: Db): Promise<Sale>;
@@ -37,6 +44,13 @@ export interface CreateItemInput {
   categoryId: string;
   attributes?: Record<string, unknown>;
   cost?: string;
+  listPrice?: string;
+  location?: string;
+}
+
+export interface FinalizeIntakeInput {
+  attributes: Record<string, unknown>;
+  cost: string;
   listPrice?: string;
   location?: string;
 }
@@ -136,6 +150,44 @@ export class ItemService {
       );
       return updated;
     });
+  }
+
+  /**
+   * Apply the final intake payload (validated attributes + cost + optional
+   * list price + optional location) to a draft item. Used by the intake
+   * Server Action after `categoryService.validateIntake` succeeds.
+   *
+   * The draft was created at intake-page mount time so photos could attach
+   * to a real `stocked` item; finalize is the second leg that turns that
+   * draft into a fully-described item. Status stays `stocked` either way.
+   */
+  async finalizeIntake(id: string, input: FinalizeIntakeInput): Promise<Item> {
+    const item = await this.items.findById(id);
+    if (item === null) {
+      throw new ErrNotFound("item", id);
+    }
+    if (item.status !== "stocked") {
+      throw new ErrInvalidTransition(id, item.status, "stocked");
+    }
+    const updated = await this.items.update(id, {
+      attributes: input.attributes,
+      cost: input.cost,
+      ...(input.listPrice !== undefined ? { listPrice: input.listPrice } : {}),
+      ...(input.location !== undefined ? { location: input.location } : {}),
+    });
+    if (updated === null) {
+      throw new ErrNotFound("item", id);
+    }
+    this.logger.info(
+      {
+        event: "item.finalized",
+        itemId: id,
+        displayId: updated.displayId,
+        cost: input.cost,
+      },
+      "intake finalized",
+    );
+    return updated;
   }
 
   async archive(id: string): Promise<Item> {
