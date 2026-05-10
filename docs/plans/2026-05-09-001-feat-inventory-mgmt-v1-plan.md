@@ -381,7 +381,7 @@ flowchart TD
 
 ### Phase 1: Foundation
 
-- [ ] **Unit 1: Project scaffolding and deploy pipeline**
+- [x] **Unit 1: Project scaffolding and deploy pipeline** *(shipped 2026-05-09)*
 
 **Goal:** Establish the Next.js + Bun + TypeScript-strict project, wired to Vercel and Neon, with the layered architecture skeleton in place.
 
@@ -419,7 +419,7 @@ flowchart TD
 - `bun run dev` boots locally. Vercel preview deploys succeed on a PR.
 - CI runs lint + typecheck + test on PRs and passes on this scaffold.
 
-- [ ] **Unit 2: Authentication via Auth.js v5 + magic link + env allowlist**
+- [x] **Unit 2: Authentication via Auth.js v5 + magic link + env allowlist** *(shipped 2026-05-09)*
 
 **Goal:** Single-tenant authentication where only emails on the allowlist can sign in, and removing an email from the allowlist invalidates active sessions within the JWT TTL.
 
@@ -463,7 +463,7 @@ flowchart TD
 - An email in the env allowlist can sign in via magic link end-to-end on a Vercel preview.
 - An email removed from the env allowlist (after a redeploy) loses access within one request after their JWT next refreshes.
 
-- [ ] **Unit 3: Drizzle schema, migrations, and category seed data**
+- [x] **Unit 3: Drizzle schema, migrations, and category seed data** *(shipped 2026-05-09)*
 
 **Goal:** Stand up the entire v1 data model (items, categories, attribute_definitions, photos, sales) with a first migration applied to Neon and the three v1 categories seeded.
 
