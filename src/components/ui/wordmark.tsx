@@ -7,10 +7,14 @@ import Image from "next/image";
  * has a white background; `mix-blend-mode: multiply` drops the white
  * so the warm Kraft / Bone surface shows through cleanly.
  *
+ * The mark is a dense wordmark (italic serif + ornament + tagline)
+ * that needs significant vertical room to be legible. Sizes are tuned
+ * for that, not for a glyph-only logo.
+ *
  * Sizes:
- *   sm — 32px tall · sticky header at very narrow viewports
- *   md — 40px tall · default header
- *   lg — 96px tall · sign-in / not-found / error pages
+ *   sm — 56px tall · sticky header at very narrow viewports
+ *   md — 72px tall · default header
+ *   lg — 144px tall · sign-in / not-found / error pages
  */
 export function Wordmark({
   size = "md",
@@ -19,7 +23,7 @@ export function Wordmark({
   size?: "sm" | "md" | "lg";
   priority?: boolean;
 }): React.ReactElement {
-  const px = size === "sm" ? 32 : size === "lg" ? 96 : 40;
+  const px = size === "sm" ? 56 : size === "lg" ? 144 : 72;
   return (
     <Image
       src="/brand/curtice_crates.png"
@@ -31,7 +35,8 @@ export function Wordmark({
       // multiply blend lets the surface tone show through the white,
       // keeps the orange wordmark + ornament intact, and respects the
       // page's color palette without us needing a transparent variant.
-      className="h-auto select-none object-contain mix-blend-multiply"
+      className="select-none mix-blend-multiply"
+      style={{ width: px, height: px }}
       unoptimized
     />
   );
