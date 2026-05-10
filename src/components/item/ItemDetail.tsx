@@ -18,16 +18,22 @@ export interface ItemDetailProps {
   item: Item;
   category: Category | null;
   photos: readonly Photo[];
+  /**
+   * URL per photo (same length, same order). Resolved upstream via
+   * BlobGateway.getPhotoUrls so private blobs work — null entries
+   * indicate a photo whose blob couldn't be resolved (deleted, expired,
+   * etc.) and are skipped in the render.
+   */
+  photoUrls: readonly (string | null)[];
   sale: Sale | null;
-  blobBaseUrl: string | undefined;
 }
 
 export function ItemDetail({
   item,
   category,
   photos,
+  photoUrls,
   sale,
-  blobBaseUrl,
 }: ItemDetailProps): React.ReactElement {
   return (
     <div className="grid gap-7">
@@ -51,23 +57,27 @@ export function ItemDetail({
         </div>
       </header>
 
-      {photos.length > 0 && blobBaseUrl !== undefined ? (
+      {photos.length > 0 ? (
         <section className="grid gap-3">
           <Label>Photos</Label>
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {photos.map((p) => (
-              <li
-                key={p.id}
-                className="aspect-square overflow-hidden rounded-md border border-hairline bg-paper"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`${blobBaseUrl.replace(/\/+$/, "")}/${p.blobPath.replace(/^\/+/, "")}`}
-                  alt={p.caption ?? "Item photo"}
-                  className="h-full w-full object-cover"
-                />
-              </li>
-            ))}
+            {photos.map((p, i) => {
+              const url = photoUrls[i];
+              if (url === null || url === undefined) return null;
+              return (
+                <li
+                  key={p.id}
+                  className="aspect-square overflow-hidden rounded-md border border-hairline bg-paper"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt={p.caption ?? "Item photo"}
+                    className="h-full w-full object-cover"
+                  />
+                </li>
+              );
+            })}
           </ul>
         </section>
       ) : null}

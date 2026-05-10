@@ -13,7 +13,7 @@ import { logger } from "@/lib/logger";
 import { ItemRepository } from "@/repositories/item.repository";
 import { PhotoRepository } from "@/repositories/photo.repository";
 import { PhotoService } from "@/services/photo.service";
-import { del, get, put } from "@vercel/blob";
+import { del, get, head, put } from "@vercel/blob";
 
 /**
  * The single Route Handler exception in v1 (architecture rule B3 in the
@@ -38,7 +38,7 @@ function buildService(): PhotoService {
   return new PhotoService(
     new PhotoRepository(db),
     new ItemRepository(db),
-    new BlobGateway({ get, put, del }),
+    new BlobGateway({ get, put, del, head }),
     logger,
   );
 }

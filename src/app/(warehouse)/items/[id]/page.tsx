@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
+import { del, get, head, put } from "@vercel/blob";
 import { getDb } from "@/db/client";
 import { auth } from "@/lib/auth";
+import { BlobGateway } from "@/gateways/blob.gateway";
 import { CategoryRepository } from "@/repositories/category.repository";
 import { ItemRepository } from "@/repositories/item.repository";
 import { PhotoRepository } from "@/repositories/photo.repository";
@@ -33,6 +35,12 @@ export default async function ItemDetailPage({
     new SaleRepository(db).findByItemId(id),
   ]);
 
+  // Resolve every photo's signed URL in parallel — private blobs need a
+  // freshly-issued URL per render.
+  const blobs = new BlobGateway({ get, put, del, head });
+  const urlByPathname = await blobs.getPhotoUrls(photos.map((p) => p.blobPath));
+  const photoUrls = photos.map((p) => urlByPathname.get(p.blobPath) ?? null);
+
   return (
     <>
       <PageHeader
@@ -44,8 +52,8 @@ export default async function ItemDetailPage({
           item={item}
           category={category}
           photos={photos}
+          photoUrls={photoUrls}
           sale={sale}
-          blobBaseUrl={process.env["BLOB_STORE_BASE_URL"]}
         />
       </main>
     </>

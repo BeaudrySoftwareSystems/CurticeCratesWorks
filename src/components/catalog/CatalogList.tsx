@@ -1,14 +1,14 @@
 import Link from "next/link";
 import type { Item } from "@/db/schema";
-import type { Photo } from "@/domain/photo";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { DisplayId } from "@/components/ui/wordmark";
 import { Tabular } from "@/components/ui/typography";
 
 /**
  * Catalog grid. Server Component — receives a fully-resolved list of
- * items + a per-item cover photo so it can render without extra round-
- * trips. Cards link to item detail.
+ * items + a pre-resolved cover-URL per item. The URL resolution lives
+ * upstream (BlobGateway.getPhotoUrls in the page) because private blobs
+ * need a fresh signed URL at render time, batched in parallel.
  *
  * Per DESIGN.md: surface tone (Kraft over Bone) carries depth. No
  * resting shadow — the Hover Lift class only attaches on hover/focus.
@@ -17,15 +17,13 @@ import { Tabular } from "@/components/ui/typography";
  */
 export interface CatalogListProps {
   items: ReadonlyArray<Item & { categoryName: string | null }>;
-  coverByItemId: Map<string, Photo>;
-  blobBaseUrl: string | undefined;
+  coverUrlByItemId: Map<string, string>;
   emptyState?: React.ReactNode;
 }
 
 export function CatalogList({
   items,
-  coverByItemId,
-  blobBaseUrl,
+  coverUrlByItemId,
   emptyState,
 }: CatalogListProps): React.ReactElement {
   if (items.length === 0) {
@@ -42,11 +40,7 @@ export function CatalogList({
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
       {items.map((item) => {
-        const cover = coverByItemId.get(item.id);
-        const photoUrl =
-          cover !== undefined && blobBaseUrl !== undefined
-            ? `${blobBaseUrl.replace(/\/+$/, "")}/${cover.blobPath.replace(/^\/+/, "")}`
-            : null;
+        const photoUrl = coverUrlByItemId.get(item.id) ?? null;
         return (
           <li key={item.id}>
             <Link

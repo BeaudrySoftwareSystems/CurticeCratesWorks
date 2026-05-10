@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { del, get, head, put } from "@vercel/blob";
 import { getDb } from "@/db/client";
 import { auth } from "@/lib/auth";
 import { CategoryRepository } from "@/repositories/category.repository";
@@ -11,6 +12,7 @@ import { PageHeader, STANDARD_NAV_LINKS } from "@/components/ui/page-header";
 import { Display, Label, Tabular } from "@/components/ui/typography";
 import type { ItemStatus } from "@/domain/item";
 import type { Photo } from "@/domain/photo";
+import { BlobGateway } from "@/gateways/blob.gateway";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +64,21 @@ export default async function CatalogHomePage({
       coverByItemId.set(p.itemId, p);
     }
   }
+
+  // Resolve every cover photo's signed URL in parallel — for private
+  // blobs the URL must be re-fetched at render time.
+  const blobs = new BlobGateway({ get, put, del, head });
+  const urlByPathname = await blobs.getPhotoUrls(
+    [...coverByItemId.values()].map((p) => p.blobPath),
+  );
+  const coverUrlByItemId = new Map<string, string>();
+  for (const [itemId, photo] of coverByItemId.entries()) {
+    const url = urlByPathname.get(photo.blobPath);
+    if (url !== undefined) {
+      coverUrlByItemId.set(itemId, url);
+    }
+  }
+
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
   const itemsWithCategory = items.map((it) => ({
     ...it,
@@ -101,8 +118,7 @@ export default async function CatalogHomePage({
         />
         <CatalogList
           items={itemsWithCategory}
-          coverByItemId={coverByItemId}
-          blobBaseUrl={process.env["BLOB_STORE_BASE_URL"]}
+          coverUrlByItemId={coverUrlByItemId}
           emptyState={<CatalogEmptyState filter={statusParam} />}
         />
       </main>

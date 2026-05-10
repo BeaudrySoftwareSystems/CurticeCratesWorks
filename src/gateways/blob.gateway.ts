@@ -1,6 +1,6 @@
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
-import { del, get, put } from "@vercel/blob";
+import { del, get, head, put } from "@vercel/blob";
 import { ErrInvalidUpload } from "@/domain/errors";
 import {
   isAllowedPhotoMime,
@@ -17,6 +17,7 @@ export interface BlobClient {
   get: typeof get;
   put: typeof put;
   del: typeof del;
+  head: typeof head;
 }
 
 /**
@@ -62,8 +63,6 @@ export class BlobGateway {
   constructor(
     private readonly blob: BlobClient,
     private readonly sharpFactory: SharpFactory = (buf) => sharp(buf),
-    private readonly storeBaseUrl: string = process.env["BLOB_STORE_BASE_URL"] ??
-      "",
   ) {}
 
   async processUploadedBlob(
@@ -78,7 +77,7 @@ export class BlobGateway {
       );
     }
 
-    const fetched = await this.blob.get(originalPathname, { access: "public" });
+    const fetched = await this.blob.get(originalPathname, { access: "private" });
     if (fetched === null || fetched === undefined || fetched.stream === null) {
       throw new ErrInvalidUpload(originalPathname, "blob not found");
     }
@@ -112,7 +111,7 @@ export class BlobGateway {
 
     const processedPathname = derivedProcessedPath(originalPathname);
     const written = await this.blob.put(processedPathname, processed, {
-      access: "public",
+      access: "private",
       contentType: declaredMime,
       addRandomSuffix: true,
     });
@@ -131,19 +130,40 @@ export class BlobGateway {
   }
 
   /**
-   * Compose the public URL for a stored pathname. We never persist URLs in
-   * the DB (only pathnames); the URL is derived at read time so a future
-   * store rename or domain change is a config-only fix.
+   * Resolve the browser-loadable URL for a stored pathname. For private
+   * stores the URL is short-lived and embeds a signed access token, so
+   * we hit `head()` at render time rather than persisting the URL.
+   *
+   * Server Components batch these via `getPhotoUrls` to avoid sequential
+   * round-trips; both methods tolerate a missing blob by returning null.
    */
-  getPhotoUrl(pathname: string): string {
-    if (this.storeBaseUrl === "") {
-      throw new Error(
-        "BLOB_STORE_BASE_URL is not set. Required to compose public photo URLs.",
-      );
+  async getPhotoUrl(pathname: string): Promise<string | null> {
+    try {
+      const meta = await this.blob.head(pathname);
+      return meta.url;
+    } catch {
+      return null;
     }
-    const base = this.storeBaseUrl.replace(/\/+$/, "");
-    const path = pathname.replace(/^\/+/, "");
-    return `${base}/${path}`;
+  }
+
+  /**
+   * Bulk URL resolution. Used by the catalog grid + item-detail page so
+   * the per-photo `head()` calls run in parallel — keeping the added
+   * latency to one round-trip's worth even for a 12-photo gallery.
+   */
+  async getPhotoUrls(
+    pathnames: readonly string[],
+  ): Promise<Map<string, string>> {
+    const out = new Map<string, string>();
+    const results = await Promise.all(
+      pathnames.map(async (p) => [p, await this.getPhotoUrl(p)] as const),
+    );
+    for (const [pathname, url] of results) {
+      if (url !== null) {
+        out.set(pathname, url);
+      }
+    }
+    return out;
   }
 
   private async safeDelete(pathname: string): Promise<void> {

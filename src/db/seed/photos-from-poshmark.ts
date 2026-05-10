@@ -134,7 +134,7 @@ async function attachPhotos(
 
       const pathname = `items/${pair.itemId}/poshmark-${Date.now()}-${i}.jpg`;
       const written = await put(pathname, processed, {
-        access: "public",
+        access: "private",
         contentType: "image/jpeg",
         addRandomSuffix: true,
       });
