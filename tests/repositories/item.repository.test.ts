@@ -105,6 +105,59 @@ describe("ItemRepository", () => {
     });
   });
 
+  describe("list (filtered)", () => {
+    it("returns all items newest-first when no filters are passed", async () => {
+      const a = await repo.create({ categoryId, attributes: {} });
+      await new Promise((r) => setTimeout(r, 5));
+      const b = await repo.create({ categoryId, attributes: {} });
+      const rows = await repo.list();
+      expect(rows.map((r) => r.id)).toEqual([b.id, a.id]);
+    });
+
+    it("filters by status", async () => {
+      const a = await repo.create({ categoryId, attributes: {} });
+      const b = await repo.create({ categoryId, attributes: {} });
+      await repo.setStatus(b.id, "sold");
+      const stocked = await repo.list({ status: "stocked" });
+      expect(stocked.map((r) => r.id)).toEqual([a.id]);
+      const sold = await repo.list({ status: "sold" });
+      expect(sold.map((r) => r.id)).toEqual([b.id]);
+    });
+
+    it("filters by category", async () => {
+      const [other] = await db
+        .insert(categories)
+        .values({ name: "Other Cat" })
+        .returning();
+      const a = await repo.create({ categoryId, attributes: {} });
+      const b = await repo.create({
+        categoryId: other!.id,
+        attributes: {},
+      });
+      const inFirst = await repo.list({ categoryId });
+      expect(inFirst.map((r) => r.id)).toEqual([a.id]);
+      const inOther = await repo.list({ categoryId: other!.id });
+      expect(inOther.map((r) => r.id)).toEqual([b.id]);
+    });
+
+    it("composes status + category filters with AND semantics", async () => {
+      const [other] = await db
+        .insert(categories)
+        .values({ name: "Another Cat" })
+        .returning();
+      const a = await repo.create({ categoryId, attributes: {} });
+      const b = await repo.create({ categoryId, attributes: {} });
+      await repo.setStatus(b.id, "archived");
+      await repo.create({ categoryId: other!.id, attributes: {} });
+
+      const result = await repo.list({
+        status: "stocked",
+        categoryId,
+      });
+      expect(result.map((r) => r.id)).toEqual([a.id]);
+    });
+  });
+
   describe("update", () => {
     it("applies attributes / cost / listPrice / location and bumps updatedAt", async () => {
       const item = await repo.create({ categoryId, attributes: {} });

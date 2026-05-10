@@ -105,6 +105,28 @@ describe("PhotoRepository", () => {
     expect(await repo.listForItem(itemId)).toEqual([]);
   });
 
+  it("listForItems batches across multiple item ids in one query", async () => {
+    const cat = await new CategoryRepository(db).create({ name: "ShoesB" });
+    const itemB = await new ItemRepository(db).create({
+      categoryId: cat.id,
+      attributes: {},
+    });
+    await repo.create({ itemId, blobPath: "items/a/cover.webp" });
+    await repo.create({ itemId, blobPath: "items/a/second.webp" });
+    await repo.create({ itemId: itemB.id, blobPath: "items/b/cover.webp" });
+
+    const rows = await repo.listForItems([itemId, itemB.id]);
+    expect(rows.map((r) => r.blobPath).sort()).toEqual([
+      "items/a/cover.webp",
+      "items/a/second.webp",
+      "items/b/cover.webp",
+    ]);
+  });
+
+  it("listForItems returns an empty array on an empty input list", async () => {
+    expect(await repo.listForItems([])).toEqual([]);
+  });
+
   it("create works inside an outer transaction", async () => {
     await db.transaction(async (tx) => {
       await repo.create(

@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { photos } from "@/db/schema";
 import type { NewPhoto, Photo } from "@/domain/photo";
@@ -30,6 +30,24 @@ export class PhotoRepository {
       .select()
       .from(photos)
       .where(eq(photos.itemId, itemId))
+      .orderBy(asc(photos.sortOrder), asc(photos.createdAt));
+  }
+
+  /**
+   * Bulk lookup used by the catalog Server Component to resolve a single
+   * cover photo per item without N+1 round-trips. Caller is responsible
+   * for grouping by `itemId` (a Map keyed by id is cheap and avoids
+   * forcing a particular shape on consumers).
+   */
+  async listForItems(itemIds: readonly string[], tx?: Db): Promise<Photo[]> {
+    if (itemIds.length === 0) {
+      return [];
+    }
+    const handle = tx ?? this.db;
+    return handle
+      .select()
+      .from(photos)
+      .where(inArray(photos.itemId, [...itemIds]))
       .orderBy(asc(photos.sortOrder), asc(photos.createdAt));
   }
 

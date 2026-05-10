@@ -682,7 +682,7 @@ flowchart TD
 - Manual: intake a real garment on a phone preview deploy in under the baseline + 5s.
 - Tests pass; coverage on `IntakeForm` and `createItem` action ≥ 80%.
 
-- [ ] **Unit 8: Catalog list, item detail, mark-sold and archive actions**
+- [x] **Unit 8: Catalog list, item detail, mark-sold and archive actions** *(shipped 2026-05-10; archive dialog has no reason field — schema has no archive_reason column and adding one wasn't worth the migration churn for v1; pagination + location filter deferred per scope)*
 
 **Goal:** Browse stocked items, open an item, tap Mark Sold (with platform/price/date) or Archive. Reprint label from item detail.
 
