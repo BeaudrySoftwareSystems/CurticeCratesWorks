@@ -549,7 +549,7 @@ flowchart TD
 - All tests pass with race detector / parallel test execution enabled.
 - Status transition matrix is exhaustively covered.
 
-- [ ] **Unit 5: Category service + dynamic Zod schema builder for attributes**
+- [x] **Unit 5: Category service + dynamic Zod schema builder for attributes** *(shipped 2026-05-10)*
 
 **Goal:** Categories and attribute definitions are queryable; intake input can be validated against a category-specific Zod schema constructed at runtime.
 
