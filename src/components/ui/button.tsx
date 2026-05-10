@@ -12,16 +12,30 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "reac
 
 type Variant = "primary" | "secondary" | "destructive";
 
+/**
+ * Button vocabulary tuned to the Curtice Crates editorial / craftsman
+ * brand without sacrificing warehouse-floor legibility:
+ *   - Slightly squared corners (rounded-sm) suggest letterpress, not
+ *     SaaS pill.
+ *   - Tactile shadow stack: a subtle inner top highlight + soft
+ *     drop shadow give the surface a "pressed" feel without crossing
+ *     into glassmorphism or skeuomorphism.
+ *   - Hairline ember-deep border defines the primary edge against
+ *     warm Kraft headers where the ember-on-kraft contrast can blur.
+ *   - Active state: removes the lift + shadow so the press registers.
+ */
 const BASE =
-  "inline-flex min-h-12 items-center justify-center gap-2 rounded-md px-4 text-base font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ember/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bone disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-sm px-5 text-[15px] font-medium tracking-[0.005em] transition-[background-color,box-shadow,transform] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ember/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bone disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none";
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-ember text-bone shadow-[0_1px_0_oklch(45%_0.18_40)] hover:bg-ember-deep active:translate-y-px",
+    // 1px ember-deep border + inset top highlight + soft warm bottom shadow.
+    // Hover: deepen the fill; active: press into the surface (lose shadow).
+    "border border-[oklch(50%_0.18_40)] bg-ember text-bone shadow-[inset_0_1px_0_oklch(80%_0.10_40_/_0.55),0_1px_2px_oklch(35%_0.15_40_/_0.25),0_2px_6px_oklch(35%_0.15_40_/_0.18)] hover:bg-ember-deep hover:shadow-[inset_0_1px_0_oklch(78%_0.10_40_/_0.45),0_1px_2px_oklch(35%_0.15_40_/_0.25)] active:translate-y-px active:shadow-[inset_0_1px_0_oklch(40%_0.16_40_/_0.30)]",
   secondary:
-    "border border-edge bg-paper text-soot hover:border-driftwood hover:bg-kraft",
+    "border border-edge bg-paper text-soot shadow-[inset_0_1px_0_oklch(100%_0_0_/_0.6)] hover:border-driftwood hover:bg-kraft active:translate-y-px",
   destructive:
-    "bg-signal text-bone hover:bg-[oklch(50%_0.18_25)] active:translate-y-px",
+    "border border-[oklch(50%_0.16_25)] bg-signal text-bone shadow-[inset_0_1px_0_oklch(78%_0.10_25_/_0.5),0_1px_2px_oklch(35%_0.16_25_/_0.25)] hover:bg-[oklch(50%_0.18_25)] active:translate-y-px active:shadow-none",
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

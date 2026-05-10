@@ -22,21 +22,21 @@ export interface LogoProps {
 const PRESETS = {
   sm: {
     word: "text-[20px] leading-none",
-    ornament: "h-[8px] w-10",
+    ornament: "h-3 w-12",
     tagline: null,
-    gap: "gap-2",
+    gap: "gap-2.5",
     layout: "inline" as const,
   },
   md: {
     word: "text-[28px] leading-none",
-    ornament: "h-[7px] w-16",
+    ornament: "h-3 w-20",
     tagline: null,
     gap: "gap-1",
     layout: "stacked" as const,
   },
   lg: {
     word: "text-[56px] leading-none",
-    ornament: "h-3 w-32",
+    ornament: "h-5 w-40",
     tagline: "text-[12px] tracking-[0.24em]",
     gap: "gap-2",
     layout: "stacked" as const,
@@ -102,10 +102,16 @@ function Word({
 }
 
 /**
- * Symmetric wheat sprig ornament. Uses CSS `currentColor` so it picks
- * up the parent's `text-ember`. Drawn as a horizontal stem with grain
- * ovals angled off both sides — visually evokes the original brand
- * mark without being a literal trace.
+ * Symmetric wheat ornament. Stylized rather than literal — at 40×8 px
+ * (the inline-header size) the original detailed sprig collapsed into
+ * an unreadable smudge. This version uses chunky strokes and a
+ * compact 32×10 viewBox so each visual element maps to ≥1.5 px of
+ * actual screen space at the smallest size we render.
+ *
+ * Anatomy: a thin horizontal stem flanked by chevron-shaped wheat
+ * heads on each side, with a small filled diamond at the center as
+ * the visual fulcrum. Uses `currentColor` so it inherits the parent's
+ * ember.
  */
 function WheatOrnament({
   className,
@@ -114,52 +120,36 @@ function WheatOrnament({
 }): React.ReactElement {
   return (
     <svg
-      viewBox="0 0 120 16"
+      viewBox="0 0 32 10"
       xmlns="http://www.w3.org/2000/svg"
       className={`block ${className ?? ""}`}
       aria-hidden
       role="presentation"
       preserveAspectRatio="xMidYMid meet"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
       {/* horizontal stem */}
-      <line
-        x1="6"
-        y1="8"
-        x2="114"
-        y2="8"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
+      <line x1="3" y1="5" x2="29" y2="5" strokeWidth="0.8" />
+
+      {/* end caps */}
+      <circle cx="2" cy="5" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="30" cy="5" r="0.9" fill="currentColor" stroke="none" />
+
+      {/* left wheat head — chevron pointing inward */}
+      <path d="M 7 2.5 L 11 5 L 7 7.5" strokeWidth="1" />
+
+      {/* right wheat head — chevron pointing inward */}
+      <path d="M 25 2.5 L 21 5 L 25 7.5" strokeWidth="1" />
+
+      {/* center diamond fulcrum */}
+      <path
+        d="M 16 2.6 L 18 5 L 16 7.4 L 14 5 Z"
+        fill="currentColor"
+        stroke="none"
       />
-      {/* outer flourish points */}
-      <circle cx="3" cy="8" r="1.6" fill="currentColor" />
-      <circle cx="117" cy="8" r="1.6" fill="currentColor" />
-      {/* grains: top row tilted up, bottom row tilted down, mirrored
-          across the vertical center axis for symmetry */}
-      {[40, 60, 80].map((cx) => {
-        const tiltUp = cx === 60 ? 0 : cx < 60 ? -28 : 28;
-        const tiltDown = cx === 60 ? 0 : cx < 60 ? 28 : -28;
-        return (
-          <g key={cx}>
-            <ellipse
-              cx={cx}
-              cy="4"
-              rx="3.4"
-              ry="1.4"
-              fill="currentColor"
-              transform={`rotate(${tiltUp} ${cx} 4)`}
-            />
-            <ellipse
-              cx={cx}
-              cy="12"
-              rx="3.4"
-              ry="1.4"
-              fill="currentColor"
-              transform={`rotate(${tiltDown} ${cx} 12)`}
-            />
-          </g>
-        );
-      })}
     </svg>
   );
 }
