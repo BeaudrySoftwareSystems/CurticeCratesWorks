@@ -103,7 +103,7 @@ describe("PhotoCapture", () => {
         "photo.jpg",
         file,
         expect.objectContaining({
-          access: "private",
+          access: "public",
           handleUploadUrl: "/api/blob/upload",
         }),
       );

@@ -102,23 +102,6 @@ function makeFakeBlobClient(seed: FakeBlob[] = []): {
         delCalls.push(u);
       }
     },
-    async head(pathname: string) {
-      const found = store.get(pathname);
-      if (found === undefined) {
-        throw new Error(`fake head: ${pathname} not found`);
-      }
-      return {
-        url: `https://example.private.blob.vercel-storage.com/${found.pathname}?token=signed`,
-        downloadUrl: `https://example.private.blob.vercel-storage.com/${found.pathname}?token=signed&download=1`,
-        pathname: found.pathname,
-        size: found.bytes.length,
-        contentType: found.contentType ?? "application/octet-stream",
-        contentDisposition: null,
-        cacheControl: "no-store",
-        uploadedAt: new Date(),
-        etag: "fake-etag-h",
-      };
-    },
     // Intentionally cast: the surface we use is intersected via BlobClient,
     // and the @vercel/blob library's full types include overloads we don't.
   } as unknown as BlobClient;
@@ -182,7 +165,7 @@ describe("BlobGateway.processUploadedBlob", () => {
 
     expect(putCalls).toHaveLength(1);
     expect(putCalls[0]?.opts).toMatchObject({
-      access: "private",
+      access: "public",
       contentType: "image/jpeg",
       addRandomSuffix: true,
     });
@@ -247,12 +230,7 @@ describe("BlobGateway.processUploadedBlob", () => {
 describe("BlobGateway.deletePhoto", () => {
   it("delegates to blob.del with the pathname", async () => {
     const del = vi.fn(async () => undefined);
-    const client = {
-      get: vi.fn(),
-      put: vi.fn(),
-      head: vi.fn(),
-      del,
-    } as unknown as BlobClient;
+    const client = { get: vi.fn(), put: vi.fn(), del } as unknown as BlobClient;
     const gw = new BlobGateway(client);
     await gw.deletePhoto("processed/uploads/photo-x.png");
     expect(del).toHaveBeenCalledWith("processed/uploads/photo-x.png");
@@ -260,44 +238,52 @@ describe("BlobGateway.deletePhoto", () => {
 });
 
 describe("BlobGateway.getPhotoUrl / getPhotoUrls", () => {
-  it("returns the head() url for an existing pathname", async () => {
-    const { client } = makeFakeBlobClient([
-      { pathname: "processed/uploads/foo.png", bytes: Buffer.from([1]) },
-    ]);
-    const gw = new BlobGateway(client);
-    const url = await gw.getPhotoUrl("processed/uploads/foo.png");
-    expect(url).toBe(
-      "https://example.private.blob.vercel-storage.com/processed/uploads/foo.png?token=signed",
+  it("composes a URL from the configured store base + pathname", () => {
+    const client = {} as unknown as BlobClient;
+    const gw = new BlobGateway(
+      client,
+      undefined,
+      "https://example.public.blob.vercel-storage.com",
+    );
+    expect(gw.getPhotoUrl("processed/uploads/foo.png")).toBe(
+      "https://example.public.blob.vercel-storage.com/processed/uploads/foo.png",
     );
   });
 
-  it("returns null when head() throws (e.g. blob deleted)", async () => {
-    const { client } = makeFakeBlobClient([]);
-    const gw = new BlobGateway(client);
-    expect(await gw.getPhotoUrl("processed/uploads/missing.png")).toBeNull();
+  it("strips a trailing slash from the base and a leading slash from the pathname", () => {
+    const client = {} as unknown as BlobClient;
+    const gw = new BlobGateway(
+      client,
+      undefined,
+      "https://example.public.blob.vercel-storage.com/",
+    );
+    expect(gw.getPhotoUrl("/processed/uploads/foo.png")).toBe(
+      "https://example.public.blob.vercel-storage.com/processed/uploads/foo.png",
+    );
   });
 
-  it("getPhotoUrls resolves multiple pathnames in parallel", async () => {
-    const { client } = makeFakeBlobClient([
-      { pathname: "a.png", bytes: Buffer.from([1]) },
-      { pathname: "b.png", bytes: Buffer.from([2]) },
-      { pathname: "c.png", bytes: Buffer.from([3]) },
-    ]);
-    const gw = new BlobGateway(client);
-    const urls = await gw.getPhotoUrls(["a.png", "b.png", "c.png"]);
-    expect(urls.size).toBe(3);
-    expect(urls.get("a.png")).toMatch(/a\.png\?token=signed$/);
-    expect(urls.get("b.png")).toMatch(/b\.png\?token=signed$/);
-    expect(urls.get("c.png")).toMatch(/c\.png\?token=signed$/);
+  it("throws when BLOB_STORE_BASE_URL is not configured", () => {
+    const client = {} as unknown as BlobClient;
+    const gw = new BlobGateway(client, undefined, "");
+    expect(() => gw.getPhotoUrl("processed/x.png")).toThrow(
+      /BLOB_STORE_BASE_URL/,
+    );
   });
 
-  it("getPhotoUrls skips pathnames whose blob is missing without erroring", async () => {
-    const { client } = makeFakeBlobClient([
-      { pathname: "exists.png", bytes: Buffer.from([1]) },
-    ]);
-    const gw = new BlobGateway(client);
-    const urls = await gw.getPhotoUrls(["exists.png", "gone.png"]);
-    expect(urls.size).toBe(1);
-    expect(urls.has("gone.png")).toBe(false);
+  it("getPhotoUrls returns a map of pathname → composed url", () => {
+    const client = {} as unknown as BlobClient;
+    const gw = new BlobGateway(
+      client,
+      undefined,
+      "https://example.public.blob.vercel-storage.com",
+    );
+    const urls = gw.getPhotoUrls(["a.png", "b.png"]);
+    expect(urls.size).toBe(2);
+    expect(urls.get("a.png")).toBe(
+      "https://example.public.blob.vercel-storage.com/a.png",
+    );
+    expect(urls.get("b.png")).toBe(
+      "https://example.public.blob.vercel-storage.com/b.png",
+    );
   });
 });

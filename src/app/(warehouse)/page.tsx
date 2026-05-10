@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { del, get, head, put } from "@vercel/blob";
+import { del, get, put } from "@vercel/blob";
 import { getDb } from "@/db/client";
 import { auth } from "@/lib/auth";
 import { CategoryRepository } from "@/repositories/category.repository";
@@ -65,18 +65,11 @@ export default async function CatalogHomePage({
     }
   }
 
-  // Resolve every cover photo's signed URL in parallel — for private
-  // blobs the URL must be re-fetched at render time.
-  const blobs = new BlobGateway({ get, put, del, head });
-  const urlByPathname = await blobs.getPhotoUrls(
-    [...coverByItemId.values()].map((p) => p.blobPath),
-  );
+  // Compose every cover photo URL from the configured public store base.
+  const blobs = new BlobGateway({ get, put, del });
   const coverUrlByItemId = new Map<string, string>();
   for (const [itemId, photo] of coverByItemId.entries()) {
-    const url = urlByPathname.get(photo.blobPath);
-    if (url !== undefined) {
-      coverUrlByItemId.set(itemId, url);
-    }
+    coverUrlByItemId.set(itemId, blobs.getPhotoUrl(photo.blobPath));
   }
 
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));

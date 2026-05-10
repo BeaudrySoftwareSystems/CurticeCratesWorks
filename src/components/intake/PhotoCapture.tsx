@@ -78,7 +78,7 @@ export function PhotoCapture({
         }
         try {
           const result = await upload(file.name, file, {
-            access: "private",
+            access: "public",
             handleUploadUrl: "/api/blob/upload",
             clientPayload: JSON.stringify({
               itemId,

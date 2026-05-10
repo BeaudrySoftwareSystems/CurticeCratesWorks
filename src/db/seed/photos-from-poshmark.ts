@@ -183,7 +183,7 @@ async function seedFromListing(
 
       const pathname = `items/${pair.itemId}/poshmark-${Date.now()}-${i}.jpg`;
       const written = await put(pathname, processed, {
-        access: "private",
+        access: "public",
         contentType: "image/jpeg",
         addRandomSuffix: true,
       });

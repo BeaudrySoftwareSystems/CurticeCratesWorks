@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { del, get, head, put } from "@vercel/blob";
+import { del, get, put } from "@vercel/blob";
 import { getDb } from "@/db/client";
 import { auth } from "@/lib/auth";
 import { BlobGateway } from "@/gateways/blob.gateway";
@@ -35,11 +35,9 @@ export default async function ItemDetailPage({
     new SaleRepository(db).findByItemId(id),
   ]);
 
-  // Resolve every photo's signed URL in parallel — private blobs need a
-  // freshly-issued URL per render.
-  const blobs = new BlobGateway({ get, put, del, head });
-  const urlByPathname = await blobs.getPhotoUrls(photos.map((p) => p.blobPath));
-  const photoUrls = photos.map((p) => urlByPathname.get(p.blobPath) ?? null);
+  // Compose every photo URL from the configured public store base.
+  const blobs = new BlobGateway({ get, put, del });
+  const photoUrls = photos.map((p) => blobs.getPhotoUrl(p.blobPath));
 
   return (
     <>

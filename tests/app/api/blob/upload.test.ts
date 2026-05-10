@@ -27,7 +27,6 @@ vi.mock("@vercel/blob", () => ({
   get: vi.fn(),
   put: vi.fn(),
   del: vi.fn(),
-  head: vi.fn(),
 }));
 
 // `handleUpload` is the wrapper that invokes our `onBeforeGenerateToken`
