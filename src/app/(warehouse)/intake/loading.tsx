@@ -1,0 +1,23 @@
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+
+export default function IntakePickerLoading(): React.ReactElement {
+  return (
+    <>
+      <PageHeader />
+      <main className="mx-auto grid max-w-3xl gap-6 px-4 py-8">
+        <div className="grid gap-3">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-9 w-72" />
+        </div>
+        <ul className="grid gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <li key={i}>
+              <Skeleton className="h-14 w-full rounded-lg" />
+            </li>
+          ))}
+        </ul>
+      </main>
+    </>
+  );
+}

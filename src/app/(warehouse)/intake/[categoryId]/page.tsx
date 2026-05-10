@@ -45,7 +45,7 @@ export default async function IntakeCategoryPage({
 
   return (
     <>
-      <PageHeader />
+      <PageHeader email={session.user.email ?? undefined} />
       <main className="mx-auto max-w-3xl px-4 py-8">
         <IntakeForm
           itemId={itemId}

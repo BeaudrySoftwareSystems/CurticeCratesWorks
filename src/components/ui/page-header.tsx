@@ -1,17 +1,20 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { UserMenu } from "./user-menu";
 import { Wordmark } from "./wordmark";
 
 /**
- * Sticky top header used on every authenticated page. Carries the
- * Wordmark on the left, optional contextual children on the right
- * (typically a CTA). Sits on the Kraft surface with a 1px Hairline
- * border-bottom — flat, no shadow at rest.
+ * Sticky top header used on every authenticated page. Wordmark on the
+ * left, optional contextual children, then the UserMenu (sign-out) on
+ * the right whenever a session email is provided. Sits on the Kraft
+ * surface with a 1px Hairline border-bottom — flat at rest.
  */
 export function PageHeader({
   right,
+  email,
 }: {
   right?: ReactNode;
+  email?: string;
 }): React.ReactElement {
   return (
     <header className="sticky top-0 z-20 border-b border-hairline bg-kraft/95 backdrop-blur-sm">
@@ -22,9 +25,10 @@ export function PageHeader({
         >
           <Wordmark />
         </Link>
-        {right !== undefined ? (
-          <div className="flex items-center gap-2">{right}</div>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {right}
+          {email !== undefined ? <UserMenu email={email} /> : null}
+        </div>
       </div>
     </header>
   );

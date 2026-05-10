@@ -74,9 +74,12 @@ export default async function CatalogHomePage({
   return (
     <>
       <PageHeader
+        email={session.user.email ?? undefined}
         right={
           <>
-            <LinkButton href="/quick-sale">Record uninbound sale</LinkButton>
+            <LinkButton href="/quick-sale" className="hidden sm:inline-flex">
+              Record uninbound sale
+            </LinkButton>
             <LinkButton href="/intake" variant="primary">
               New intake
             </LinkButton>
@@ -90,9 +93,8 @@ export default async function CatalogHomePage({
             <Display>Inventory</Display>
             <p className="font-sans text-[13px] text-driftwood">
               <Tabular>{items.length}</Tabular>{" "}
-              {items.length === 1 ? "item" : "items"} · {statusLabel(statusParam)}
-              {" · "}
-              <span className="text-soot">{session.user.email}</span>
+              {items.length === 1 ? "item" : "items"} ·{" "}
+              <span className="text-soot">{statusLabel(statusParam)}</span>
             </p>
           </div>
         </header>

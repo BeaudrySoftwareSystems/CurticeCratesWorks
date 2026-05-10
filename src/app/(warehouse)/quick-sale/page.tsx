@@ -22,7 +22,7 @@ export default async function QuickSalePage(): Promise<React.ReactElement> {
 
   return (
     <>
-      <PageHeader />
+      <PageHeader email={session.user.email ?? undefined} />
       <main className="mx-auto grid max-w-3xl gap-7 px-4 py-8">
         <header className="grid gap-3">
           <Label>Cold-start path</Label>

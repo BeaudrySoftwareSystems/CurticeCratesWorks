@@ -35,7 +35,7 @@ export default async function ItemDetailPage({
 
   return (
     <>
-      <PageHeader />
+      <PageHeader email={session.user.email ?? undefined} />
       <main className="mx-auto max-w-3xl px-4 py-8">
         <ItemDetail
           item={item}

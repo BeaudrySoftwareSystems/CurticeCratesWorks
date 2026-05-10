@@ -21,7 +21,7 @@ export default async function PrintTestPage(): Promise<React.ReactElement> {
   }
   return (
     <>
-      <PageHeader />
+      <PageHeader email={session.user.email ?? undefined} />
       <main className="mx-auto grid max-w-2xl gap-6 px-4 py-8">
         <header className="grid gap-3">
           <Label>Planning prerequisite · Unit 0.1</Label>
