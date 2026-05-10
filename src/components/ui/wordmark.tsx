@@ -7,14 +7,16 @@ import Image from "next/image";
  * has a white background; `mix-blend-mode: multiply` drops the white
  * so the warm Kraft / Bone surface shows through cleanly.
  *
- * The mark is a dense wordmark (italic serif + ornament + tagline)
- * that needs significant vertical room to be legible. Sizes are tuned
- * for that, not for a glyph-only logo.
+ * The asset is a square logotype with significant built-in whitespace
+ * around the wordmark + ornament + tagline. We size the rendered box
+ * generously and rely on that internal whitespace as the layout
+ * padding — the page header trims its own outer padding accordingly
+ * so the logo can breathe without bloating the sticky header.
  *
- * Sizes:
- *   sm — 56px tall · sticky header at very narrow viewports
- *   md — 72px tall · default header
- *   lg — 144px tall · sign-in / not-found / error pages
+ * Sizes (rendered box; readable wordmark is ~60% of this height):
+ *   sm — 96px  · sticky header at very narrow viewports
+ *   md — 120px · default header
+ *   lg — 224px · sign-in / not-found / error pages
  */
 export function Wordmark({
   size = "md",
@@ -23,7 +25,7 @@ export function Wordmark({
   size?: "sm" | "md" | "lg";
   priority?: boolean;
 }): React.ReactElement {
-  const px = size === "sm" ? 56 : size === "lg" ? 144 : 72;
+  const px = size === "sm" ? 96 : size === "lg" ? 224 : 120;
   return (
     <Image
       src="/brand/curtice_crates.png"

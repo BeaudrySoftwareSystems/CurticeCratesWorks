@@ -26,7 +26,13 @@ export function PageHeader({
 }): React.ReactElement {
   return (
     <header className="sticky top-0 z-20 border-b border-hairline bg-kraft/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+      {/*
+       * No vertical padding on the header — the wordmark asset already
+       * has substantial internal whitespace, so any extra padding here
+       * just bloats the sticky bar. The action controls (CTA, UserMenu)
+       * vertically center against the logo's full box.
+       */}
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-0">
         <Link
           href={{ pathname: "/" }}
           className="rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ember/50"
