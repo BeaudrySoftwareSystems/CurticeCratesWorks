@@ -25,14 +25,16 @@ export function PageHeader({
   navLinks?: readonly NavLink[];
 }): React.ReactElement {
   return (
-    <header className="sticky top-0 z-20 border-b border-hairline bg-kraft/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-20 overflow-hidden border-b border-hairline bg-kraft/95 backdrop-blur-sm">
       {/*
-       * No vertical padding on the header — the wordmark asset already
-       * has substantial internal whitespace, so any extra padding here
-       * just bloats the sticky bar. The action controls (CTA, UserMenu)
-       * vertically center against the logo's full box.
+       * Fixed sticky-bar height (h-16 = 64px). The wordmark renders at
+       * its full 120px and is vertically centered, so its top + bottom
+       * built-in whitespace overflows the bar and gets clipped by the
+       * `overflow-hidden` on the outer header — we keep the visual
+       * weight of a generous logo without paying the screen-real-estate
+       * cost in the sticky bar.
        */}
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-0">
+      <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-3 px-4">
         <Link
           href={{ pathname: "/" }}
           className="rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ember/50"
