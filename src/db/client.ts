@@ -1,11 +1,11 @@
 import { Pool } from "@neondatabase/serverless";
 import { drizzle, type NeonDatabase } from "drizzle-orm/neon-serverless";
+import * as schema from "@/db/schema";
 
 /**
- * A typed Drizzle database handle. The schema generic is filled in once
- * `src/db/schema.ts` exists (Unit 3) — until then this is a bare client.
+ * A typed Drizzle database handle bound to the project schema.
  */
-export type Db = NeonDatabase<Record<string, never>>;
+export type Db = NeonDatabase<typeof schema>;
 
 let cachedDb: Db | null = null;
 
@@ -31,6 +31,8 @@ export function getDb(): Db {
   }
 
   const pool = new Pool({ connectionString });
-  cachedDb = drizzle(pool);
+  cachedDb = drizzle(pool, { schema });
   return cachedDb;
 }
+
+export { schema };
