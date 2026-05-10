@@ -66,10 +66,15 @@ export default async function CatalogHomePage({
   }
 
   // Compose every cover photo URL from the configured public store base.
+  // getPhotoUrl returns null when BLOB_STORE_BASE_URL is unset — render
+  // a "no photo" placeholder rather than crashing the whole catalog.
   const blobs = new BlobGateway({ get, put, del });
   const coverUrlByItemId = new Map<string, string>();
   for (const [itemId, photo] of coverByItemId.entries()) {
-    coverUrlByItemId.set(itemId, blobs.getPhotoUrl(photo.blobPath));
+    const url = blobs.getPhotoUrl(photo.blobPath);
+    if (url !== null) {
+      coverUrlByItemId.set(itemId, url);
+    }
   }
 
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));

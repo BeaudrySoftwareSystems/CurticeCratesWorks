@@ -36,6 +36,8 @@ export default async function ItemDetailPage({
   ]);
 
   // Compose every photo URL from the configured public store base.
+  // getPhotoUrl returns null when BLOB_STORE_BASE_URL is unset; the
+  // detail view skips those tiles so the rest of the page still renders.
   const blobs = new BlobGateway({ get, put, del });
   const photoUrls = photos.map((p) => blobs.getPhotoUrl(p.blobPath));
 

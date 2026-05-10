@@ -21,8 +21,10 @@ export interface ItemDetailProps {
   /**
    * URL per photo (same length, same order). Resolved upstream via
    * BlobGateway.getPhotoUrl — composes from the public store base.
+   * Null entries indicate the BLOB_STORE_BASE_URL env var is missing
+   * and are skipped in the render so the rest of the page still loads.
    */
-  photoUrls: readonly string[];
+  photoUrls: readonly (string | null)[];
   sale: Sale | null;
 }
 
@@ -61,7 +63,7 @@ export function ItemDetail({
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {photos.map((p, i) => {
               const url = photoUrls[i];
-              if (url === undefined) return null;
+              if (url === undefined || url === null) return null;
               return (
                 <li
                   key={p.id}

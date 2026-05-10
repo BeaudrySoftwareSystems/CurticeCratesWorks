@@ -262,12 +262,16 @@ describe("BlobGateway.getPhotoUrl / getPhotoUrls", () => {
     );
   });
 
-  it("throws when BLOB_STORE_BASE_URL is not configured", () => {
+  it("returns null when BLOB_STORE_BASE_URL is not configured (graceful degradation, not crash)", () => {
     const client = {} as unknown as BlobClient;
     const gw = new BlobGateway(client, undefined, "");
-    expect(() => gw.getPhotoUrl("processed/x.png")).toThrow(
-      /BLOB_STORE_BASE_URL/,
-    );
+    expect(gw.getPhotoUrl("processed/x.png")).toBeNull();
+  });
+
+  it("getPhotoUrls drops entries whose URL couldn't be composed", () => {
+    const client = {} as unknown as BlobClient;
+    const gw = new BlobGateway(client, undefined, "");
+    expect(gw.getPhotoUrls(["a.png", "b.png"]).size).toBe(0);
   });
 
   it("getPhotoUrls returns a map of pathname → composed url", () => {

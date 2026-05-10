@@ -135,12 +135,15 @@ export class BlobGateway {
    * + `addRandomSuffix: true`, the resulting URL is unguessable but
    * permanent — no per-render RTT, no signing. Auth on the catalog
    * pages is the actual access control.
+   *
+   * Returns null when `BLOB_STORE_BASE_URL` is not configured, so a
+   * misconfigured environment surfaces as a "no photo" placeholder
+   * rather than a 500-RSC error on the catalog. Boot-time logging
+   * makes the cause obvious in function logs.
    */
-  getPhotoUrl(pathname: string): string {
+  getPhotoUrl(pathname: string): string | null {
     if (this.storeBaseUrl === "") {
-      throw new Error(
-        "BLOB_STORE_BASE_URL is not set. Required to compose public photo URLs.",
-      );
+      return null;
     }
     const base = this.storeBaseUrl.replace(/\/+$/, "");
     const path = pathname.replace(/^\/+/, "");
@@ -149,12 +152,16 @@ export class BlobGateway {
 
   /**
    * Bulk URL resolution. Symmetry with the catalog page's batched access
-   * pattern; cheap because it's pure string composition.
+   * pattern; null-valued entries are dropped so callers can use the map
+   * as "URL exists" presence info.
    */
   getPhotoUrls(pathnames: readonly string[]): Map<string, string> {
     const out = new Map<string, string>();
     for (const p of pathnames) {
-      out.set(p, this.getPhotoUrl(p));
+      const url = this.getPhotoUrl(p);
+      if (url !== null) {
+        out.set(p, url);
+      }
     }
     return out;
   }
