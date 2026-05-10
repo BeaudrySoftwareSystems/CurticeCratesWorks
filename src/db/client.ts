@@ -1,11 +1,24 @@
 import { Pool } from "@neondatabase/serverless";
+import type { ExtractTablesWithRelations } from "drizzle-orm";
 import { drizzle, type NeonDatabase } from "drizzle-orm/neon-serverless";
+import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
 
 /**
  * A typed Drizzle database handle bound to the project schema.
+ *
+ * In production this is a `NeonDatabase` (websocket Pool). In tests it is a
+ * `PgliteDatabase` (in-memory WASM Postgres). Repository signatures use the
+ * structurally-shared `PgDatabase` parent so both flavors are accepted.
  */
-export type Db = NeonDatabase<typeof schema>;
+export type Db = PgDatabase<
+  PgQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
+
+/** The prod-only Neon-backed handle, used at the composition root. */
+export type ProdDb = NeonDatabase<typeof schema>;
 
 let cachedDb: Db | null = null;
 

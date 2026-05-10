@@ -18,6 +18,13 @@ export default defineConfig({
         "src/instrumentation.ts",
         "src/app/**/layout.tsx",
         "src/app/**/page.tsx",
+        // Framework wiring — verified by integration / E2E, not unit tests.
+        "src/middleware.ts",
+        "src/app/**/route.ts",
+        "src/lib/auth.ts",
+        "src/lib/auth.config.ts",
+        // Declarative Drizzle schema; assertions live in tests/db/schema.test.ts.
+        "src/db/schema.ts",
       ],
       thresholds: {
         lines: 80,
