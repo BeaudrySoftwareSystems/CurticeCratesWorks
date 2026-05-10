@@ -16,7 +16,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "bun run src/db/seed/categories.ts",
-    "db:seed:photos": "bun run src/db/seed/photos-from-poshmark.ts"
+    "db:seed:photos": "bun run src/db/seed/photos-from-poshmark.ts",
+    "db:seed:pokemon": "bun run src/db/seed/pokemon-fixture.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",
