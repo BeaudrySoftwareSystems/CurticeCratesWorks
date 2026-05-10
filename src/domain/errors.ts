@@ -52,3 +52,34 @@ export class ErrValidation extends DomainError {
     this.issues = issues;
   }
 }
+
+/**
+ * Surfaced when an uploaded blob fails server-side validation — magic-byte
+ * mismatch against the declared MIME, decode failure inside `sharp`, or any
+ * other "the bytes aren't what they claimed to be" condition. Always paired
+ * with a `del()` call against the source blob so we never leak storage on a
+ * rejected upload.
+ */
+export class ErrInvalidUpload extends DomainError {
+  readonly blobPathname: string;
+  readonly reason: string;
+
+  constructor(blobPathname: string, reason: string) {
+    super("invalid_upload", `invalid upload at ${blobPathname}: ${reason}`);
+    this.name = "ErrInvalidUpload";
+    this.blobPathname = blobPathname;
+    this.reason = reason;
+  }
+}
+
+/**
+ * Surfaced when a request reaches the upload-token endpoint without a valid
+ * staff session. The route handler maps this to a 401; the service layer
+ * never throws framework-coupled errors.
+ */
+export class ErrUnauthenticated extends DomainError {
+  constructor() {
+    super("unauthenticated", "request is missing a valid session");
+    this.name = "ErrUnauthenticated";
+  }
+}

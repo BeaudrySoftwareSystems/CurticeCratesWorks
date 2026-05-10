@@ -588,7 +588,7 @@ flowchart TD
 - Coverage on `lib/attributes.ts` is 95%+ (this is pure logic).
 - Service can fetch a category and return a usable Zod schema in <50ms for typical attribute counts.
 
-- [ ] **Unit 6: Photo upload pipeline (presigned + EXIF strip + thumbnails)**
+- [x] **Unit 6: Photo upload pipeline (presigned + EXIF strip + thumbnails)** *(shipped 2026-05-10; `getSignedUrl` adapted to public + unguessable suffix — Vercel Blob does not currently expose a `getSignedUrl(path, ttl)` primitive, see commit message)*
 
 **Goal:** Phone-captured photos land in Vercel Blob via the `handleUpload` Route Handler, get EXIF-stripped server-side, and produce a single-variant `photos` row whose blob path is signed at read time.
 
