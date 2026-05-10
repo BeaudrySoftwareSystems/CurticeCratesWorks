@@ -1,13 +1,22 @@
 import { signIn } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
-import { Caption, Display, Label } from "@/components/ui/typography";
-import { Wordmark } from "@/components/ui/wordmark";
+import { Logo, WheatOrnament } from "@/components/ui/logo";
 
 interface SignInPageProps {
   searchParams: Promise<{ error?: string; callbackUrl?: string }>;
 }
 
+/**
+ * Unauthenticated sign-in. The whole surface is composed as a single
+ * editorial column (Logo, ornament, form, footer) rather than three
+ * disconnected regions. Voice is matter-of-fact and structural per
+ * PRODUCT.md — no "welcome back," no Display heading, no SaaS chrome.
+ *
+ * The wheat ornament from the Logo is reused as a faint driftwood
+ * divider between the brand block and the form so the composition
+ * reads as one page, not two stacked components.
+ */
 export default async function SignInPage({
   searchParams,
 }: SignInPageProps): Promise<React.ReactElement> {
@@ -16,28 +25,29 @@ export default async function SignInPage({
   const callbackUrl = params.callbackUrl ?? "/";
 
   return (
-    <main className="mx-auto grid min-h-dvh max-w-md grid-rows-[auto_1fr_auto] gap-10 px-5 py-8">
-      <div>
-        <Wordmark size="lg" />
-      </div>
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-12 px-6 py-12">
+      <header className="grid place-items-center gap-8">
+        <Logo size="lg" />
+        <WheatOrnament className="h-3 w-32 text-driftwood/70" />
+      </header>
 
-      <div className="grid gap-7 self-center">
-        <header className="grid gap-2">
-          <Label>Sign in</Label>
-          <Display>Magic link only</Display>
-          <Caption>
-            Enter your staff email and we&apos;ll send a one-tap sign-in link.
-            The link expires in 15 minutes.
-          </Caption>
-        </header>
+      <section className="grid w-full gap-6">
+        <div className="grid gap-1.5 text-center">
+          <h1 className="font-serif text-[22px] italic font-semibold text-soot">
+            Sign in
+          </h1>
+          <p className="font-sans text-[13px] text-driftwood">
+            Magic link, single use. Expires in 15 minutes.
+          </p>
+        </div>
 
         {error !== undefined ? (
           <p
             role="alert"
-            className="rounded-md border border-signal/30 bg-signal/10 px-3 py-2 font-sans text-[14px] text-signal"
+            className="rounded-md border border-signal/30 bg-signal/10 px-3 py-2 font-sans text-[13px] text-signal"
           >
             {error === "NotAllowed"
-              ? "This email is not on the staff allowlist. Ask the warehouse owner to add it."
+              ? "This email isn't on the staff allowlist. Ask the warehouse owner to add it."
               : "Sign-in failed. Try again, or contact the warehouse owner."}
           </p>
         ) : null}
@@ -54,7 +64,7 @@ export default async function SignInPage({
               redirectTo: callbackUrl,
             });
           }}
-          className="grid gap-5"
+          className="grid gap-4"
         >
           <Field htmlFor="email" label="Staff email">
             <Input
@@ -65,17 +75,18 @@ export default async function SignInPage({
               autoComplete="email"
               inputMode="email"
               placeholder="you@example.com"
+              autoFocus
             />
           </Field>
           <Button type="submit" variant="primary" className="w-full">
-            Send magic link
+            Send sign-in link
           </Button>
         </form>
-      </div>
+      </section>
 
-      <Caption className="text-[12px] text-smoke">
-        Curtis Crates internal · Single-tenant · Staff only.
-      </Caption>
+      <footer className="mt-auto pt-6 font-sans text-[12px] text-smoke">
+        Curtice Crates · Staff sign-in
+      </footer>
     </main>
   );
 }

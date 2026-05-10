@@ -110,10 +110,11 @@ function Word({
  *
  * Anatomy: a thin horizontal stem flanked by chevron-shaped wheat
  * heads on each side, with a small filled diamond at the center as
- * the visual fulcrum. Uses `currentColor` so it inherits the parent's
- * ember.
+ * the visual fulcrum. Uses `currentColor` so it inherits whatever
+ * color the parent sets — Crate Ember inside the Logo, faint
+ * Driftwood when reused as an editorial divider on the sign-in page.
  */
-function WheatOrnament({
+export function WheatOrnament({
   className,
 }: {
   className?: string;
